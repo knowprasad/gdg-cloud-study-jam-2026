@@ -6,6 +6,8 @@
 
 ## Current state
 
+Latest: automatic server-side read-only data refresh is deployed at `24642cb0`, stable production URL unchanged. Browser reads `/api/leaderboard`, five-minute edge cache and five-minute visible-page polling; stale cache/static fallback on upstream failure. Verified production API HTTP 200/current/486 learners twice, second request cached. Existing profile IDs preserved with ignored server mapping; new IDs use Cloudflare secret `FEED_ID_KEY`. Do not expose the mapping or key. See data-publication.md for restoring deployment prerequisites. This supersedes all older manual-only publication status notes.
+
 **Latest release:** read [v1-release.md](v1-release.md) first. Real snapshot publication and a connected public UI now supersede the historical sample-only status below. The release record states current functionality, verification limits, duplicate-profile exclusions and the manual refresh procedure.
 
 Organizer-data UI is now connected to the validated loader under `/?data=event#leaderboard`. It supports loading/unavailable/retry states, saved-snapshot fallback, standings/search/guild filters, profiles with component ledgers, and actual guild averages. The standard URL still opens the synthetic preview. No real publication has been configured or deployed. See [data-publication.md](data-publication.md). Build and snapshot validation checks passed after this integration.

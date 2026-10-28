@@ -14,6 +14,8 @@ Continue the existing organizer approval workflow in the Sheet. Exported Bingo P
 
 ## Publish changes
 
+**Automatic refresh is now active.** Sheet report changes are read by the website API with a five-minute cache, and visible open pages recheck every five minutes. You no longer need to redeploy for ordinary score/guild changes. Your Sheet's own Apps Script refresh still needs to update the reports first. The manual export commands below remain a recovery/deployment procedure.
+
 Run the read-only export, checks, build and Pages deploy commands in [v1-release.md](v1-release.md). This is currently a manual publication. Editing the Sheet alone does not immediately update the website. Preserve `.local-backups/public-id-map.json` privately so profile links remain stable.
 
 ## Launch gates still needing external input

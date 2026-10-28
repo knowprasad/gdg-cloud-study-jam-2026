@@ -13,11 +13,11 @@ export async function loadSnapshot({ fetcher = fetch, storage } = {}) {
   } catch { /* Invalid or unavailable browser storage does not block loading. */ }
 
   try {
-    const response = await fetcher('/data/leaderboard.json', { signal: AbortSignal.timeout(10000), cache: 'no-cache' });
+    const response = await fetcher('/api/leaderboard', { signal: AbortSignal.timeout(30000), cache: 'no-cache' });
     if (!response.ok) throw new Error('Publication unavailable');
     const snapshot = validateSnapshot(await response.json());
     try { storage?.setItem(cacheKey, JSON.stringify(snapshot)); } catch { /* Storage is optional. */ }
-    return { status: 'ready', snapshot };
+    return { status: response.headers.get('X-Feed-Status') === 'stale' ? 'stale' : 'ready', snapshot };
   } catch {
     return previous
       ? { status: 'stale', snapshot: previous }

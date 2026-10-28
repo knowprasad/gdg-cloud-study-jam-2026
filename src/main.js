@@ -199,3 +199,8 @@ async function refreshEvent() {
   render();
 }
 if (eventMode) refreshEvent();
+if (eventMode) setInterval(async () => {
+  if (document.hidden || ['INPUT', 'SELECT', 'BUTTON'].includes(document.activeElement?.tagName)) return;
+  eventData = await loadSnapshot();
+  render();
+}, 300000);
