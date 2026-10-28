@@ -29,7 +29,7 @@ export function validateSnapshot(input) {
       }
     }
     if (person.approvedActivities !== undefined && (!Array.isArray(person.approvedActivities) ||
-        person.approvedActivities.some(id => !['first-badge','credits','ai-studio','kickoff','five-badges','story','second-session','community','ten-badges'].includes(id)))) throw new Error('Invalid activity');
+        person.approvedActivities.some(id => !['first-badge','credits','ai-studio','kickoff','five-badges','story','second-session','community','instagram','ten-badges'].includes(id)))) throw new Error('Invalid activity');
     if (person.bestStreak !== undefined && !finite(person.bestStreak)) throw new Error('Invalid streak');
     if (typeof person.id !== 'string' || !/^p-[a-f0-9]{32}$/.test(person.id) || ids.has(person.id) ||
         typeof person.name !== 'string' || !person.name.trim() || person.name.length > 160 ||

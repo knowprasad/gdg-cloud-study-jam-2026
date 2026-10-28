@@ -52,7 +52,7 @@ participants.forEach((p, index) => {
   p.lifetimeXp = p.badges * 100;
 });
 participants.forEach((p,i)=>{
- p.approvedActivities=p.id==='demo-1'?['credits','kickoff','story','second-session','community']:p.badges?['credits',...(i%3===0?['kickoff']:[]),...(i%4===0?['community']:[])]:[];
+ p.approvedActivities=p.id==='demo-1'?['credits','kickoff','story','second-session','instagram']:p.badges?['credits',...(i%3===0?['kickoff']:[]),...(i%4===0?['instagram']:[])]:[];
  p.pendingActivities=p.id==='demo-5'?['story']:[];
  const verifiedSessions=['kickoff','second-session'].filter(id=>p.approvedActivities.includes(id)).length;
  p.scoreBreakdown.total-=p.scoreBreakdown.attendance;p.scoreBreakdown.sessions=verifiedSessions;p.scoreBreakdown.attendance=verifiedSessions*2;p.scoreBreakdown.total+=p.scoreBreakdown.attendance;

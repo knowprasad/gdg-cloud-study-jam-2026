@@ -37,10 +37,10 @@ export const bingoTasks = [
     detail: 'Attend another eligible session. Its date will be announced by organizers.',
   },
   {
-    id: 'community',
-    title: 'Join our community',
-    detail: 'Join the official campus GDG page. Organizer approval earns 2 points.',
-    url: 'https://gdg.community.dev/gdg-on-campus-atal-bihari-vajpayee-indian-institute-of-information-technology-and-management-gwalior-india/',
+    id: 'instagram',
+    title: 'Follow GDG IIITM on Instagram',
+    detail: 'Follow @gdg_oncampus_iiitm on Instagram. This square needs organizer verification; opening the link does not mark it complete.',
+    url: 'https://www.instagram.com/gdg_oncampus_iiitm/',
   },
   {
     id: 'ten-badges',
@@ -62,7 +62,7 @@ export function bingoProgress(person) {
     'five-badges': badgeIds.size >= 5,
     story: approved.has('story'),
     'second-session': approved.has('second-session'),
-    community: approved.has('community'),
+    instagram: approved.has('instagram'),
     'ten-badges': badgeIds.size >= 10,
   };
 
@@ -77,7 +77,7 @@ export function bingoProgress(person) {
     count,
     complete: count === bingoTasks.length,
     isSample: person.synthetic !== false,
-    activityPoints: Number(approved.has('story')) * 2 + Number(approved.has('community')) * 2,
+    activityPoints: Number(approved.has('story')) * 2 + Number(approved.has('community') || approved.has('instagram')) * 2,
     bonus: count === bingoTasks.length ? 5 : 0,
   };
 }
@@ -90,7 +90,7 @@ function taskStatusLabel(status, isSample) {
 
 function taskLinkLabel(id) {
   if (id === 'story') return 'Make your story card';
-  if (id === 'community') return 'Open community page';
+  if (id === 'instagram') return 'Follow @gdg_oncampus_iiitm';
   return 'Open course';
 }
 
