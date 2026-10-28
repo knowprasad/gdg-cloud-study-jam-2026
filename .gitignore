@@ -12,3 +12,5 @@ dist/
 CONTEXT.md
 design-previews/
 .impeccable/
+
+.local-backups/

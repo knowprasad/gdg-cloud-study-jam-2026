@@ -11,7 +11,7 @@ export function clubhouseFooter() {
     <div class="clubhouse-footer-inner">
       <div class="footer-invitation"><div><h2>A little further,<br><span>together.</span></h2><p>Ten badges to explore. A guild to cheer you on.</p></div><a class="footer-return" href="#leaderboard">Back to the standings <span aria-hidden="true">↗</span></a></div>
       <nav class="footer-columns" aria-label="Footer navigation">
-        <div><h3>The Study Jam</h3><a href="#leaderboard">Leaderboard</a><a href="#guilds">Meet the guilds</a><a href="#badges">Explore the badges</a><a href="#home">My progress</a></div>
+        <div><h3>The Study Jam</h3><a href="#leaderboard">Leaderboard</a><a href="#guilds">Meet the guilds</a><a href="#badges">Explore the badges</a><a href="#home">My progress</a><a href="#rules">Scoring rules</a></div>
         <div><h3>Connect with our GDG</h3><a href="https://in.linkedin.com/company/gdgoncampus-iiitm" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a><a href="https://gdg.community.dev/events/details/google-gdg-on-campus-atal-bihari-vajpayee-indian-institute-of-information-technology-and-management-gwalior-india-presents-cloud-study-jam-kickoff/" target="_blank" rel="noopener noreferrer">GDG community event ↗</a><span>GDG on Campus<br>ABV-IIITM Gwalior</span></div>
         <div><h3>Keep learning</h3><a href="https://www.skills.google/" target="_blank" rel="noopener noreferrer">Google Skills ↗</a><a href="#badges">Study Jam curriculum</a><a href="#references">References & asset credits</a></div>
         <div><h3>Jam details</h3><span>14 Sep — 22 Nov 2026</span><span>A college learning event</span><span class="footer-demo-note">Preview with fictional learners and scores.</span></div>

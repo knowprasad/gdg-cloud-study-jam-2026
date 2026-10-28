@@ -1,3 +1,4 @@
+import { scoreProgress, rankParticipants } from './scoring.js';
 // Synthetic preview data only. Event scoring belongs to the future pipeline.
 export const guilds = [
   { id: 'Orbit', color: 'blue', symbol: 'sparkle', motto: 'A little further, together.' },
@@ -20,7 +21,7 @@ export const courses = [
   ['data', 'Store, Process, and Manage Data on Google Cloud - Console', 'Data', '658', 'storage.png', 'cloud'],
   ['speech-api', 'Using the Google Cloud Speech API', 'AI & machine learning', '756', null, 'microphone'],
   ['gen-ai', 'Explore Generative AI in Agent Platform', 'Generative AI', '959', null, 'sparkle'],
-].map(([id, title, category, template, asset, icon]) => ({ id, title, category, url: `https://www.skills.google/course_templates/${template}`, asset, icon }));
+].map(([id, title, category, template, asset, icon], index) => ({ id, title, category, credits: [4,4,4,0,12,13,0,3,4,16][index], url: `https://www.skills.google/course_templates/${template}`, asset, icon }));
 
 const first = ['Ananya Sharma', 'Kabir Mehta', 'Meera Iyer', 'Rohan Verma', 'Aarav Kulkarni', 'Ishita Rao'];
 const firstNames = ['Aditi', 'Arjun', 'Devika', 'Neel', 'Tanvi', 'Sahil', 'Kavya', 'Dhruv', 'Sanya', 'Pranav', 'Ayesha', 'Vedant', 'Diya', 'Ishan', 'Ritika', 'Yash', 'Nisha', 'Siddharth', 'Avni', 'Harsh'];
@@ -28,7 +29,7 @@ const surnames = ['Joshi', 'Bansal', 'Mishra', 'Nair', 'Sen', 'Gupta', 'Bhat', '
 export const participants = Array.from({ length: 500 }, (_, index) => {
   const name = first[index] || `${firstNames[(index - 6) % 20]} ${surnames[Math.floor((index - 6) / 20)]}`;
   const points = index < 6 ? 840 - index * 30 : index > 485 ? 0 : Math.max(1, 684 - Math.floor((index - 6) * 1.4));
-  const badges = index === 4 ? 7 : Math.min(10, Math.max(0, Math.round(points / 90)));
+  const badges = index < 2 ? 10 : index === 4 ? 7 : Math.min(10, Math.max(0, Math.round(points / 90)));
   return {
     id: `demo-${index + 1}`, name: index === 147 ? 'Venkata Sai Abhinav Narayanaswamy' : index === 499 ? 'Nandini Patel' : name,
     guildId: index === 499 ? 'Solo' : [2, 3, 4].includes(index) ? 'Orbit' : guilds[index % 7].id,
@@ -38,10 +39,19 @@ export const participants = Array.from({ length: 500 }, (_, index) => {
     milestone: badges >= 10 ? 'Curriculum complete' : badges >= 5 ? 'Halfway there' : 'Getting started',
   };
 });
-// Intentional tie and no-streak fixture.
-participants[7].points = participants[6].points;
-participants[7].rank = participants[6].rank;
+// Synthetic evidence, calculated under the published rules. No real learner data.
+participants.forEach((p, index) => {
+  const run = Math.min(p.badges, p.bestStreak || (p.badges ? 1 : 0));
+  const completions = courses.slice(0, p.badges).map((c, i) => ({ id: c.id,
+    date: new Date(Date.UTC(2026, 9, 20 - Math.max(0, run - 1) + Math.min(i, Math.max(0, run - 1)))).toISOString().slice(0, 10) }));
+  const attendance = Array.from({length: p.badges ? index % 4 : 0}, (_, i) => ({id: `demo-session-${i + 1}`, date: `2026-10-${String(12 + i).padStart(2, '0')}`}));
+  p.scoreBreakdown = scoreProgress(completions, attendance, courses);
+  p.points = p.scoreBreakdown.total; p.bestStreak = p.scoreBreakdown.bestStreak;
+  p.currentStreak = 0; // The mock snapshot is 28 Oct; evidence ends on 20 Oct.
+  p.lifetimeXp = p.badges * 100;
+});
+rankParticipants(participants);
 export function guildSummary(id) {
   const members = participants.filter(p => p.guildId === id);
-  return { ...guilds.find(g => g.id === id), members, total: members.reduce((sum, p) => sum + p.points, 0), completed: members.filter(p => p.badges >= 5).length };
+  return { ...guilds.find(g => g.id === id), members, total: members.reduce((sum, p) => sum + p.points, 0), completed: members.filter(p => p.badges >= 5).length, average: members.length ? Math.round(members.reduce((sum, p) => sum + p.points, 0) / members.length * 10) / 10 : 0 };
 }

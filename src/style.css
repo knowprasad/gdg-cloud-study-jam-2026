@@ -320,3 +320,25 @@ body{overflow-x:clip}
  [data-design=clubhouse] .person-row .person-name>small{line-height:1.7}
  [data-design=clubhouse] .scoring-preview-note{font-size:14px}
 }
+/* Rules and ledger: readable, flat explanations rather than another dashboard. */
+.rules-intro{max-width:760px}.rules-intro .sample-label{margin-top:20px;font-size:12px}
+.rules-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,1fr);gap:64px}
+.rules-content>h2{font-size:25px;margin:0 0 22px}.rules-content>h2:not(:first-child){margin-top:45px}
+.rules-list{margin:0}.rules-list>div{padding:23px 0;border-bottom:1px solid var(--line)}
+.rules-list dt{font-size:19px;font-weight:650;line-height:1.6}.rules-list dt>span{display:block;color:var(--accent);font-size:14px;font-weight:550}
+.rules-list dd{margin:10px 0 0;color:var(--muted);font-size:16px;line-height:1.8;max-width:65ch}
+.rules-aside{display:flex;flex-direction:column;gap:30px}.rules-aside section{padding-top:22px;border-top:1px solid var(--line)}
+.rules-aside h2{font-size:20px;margin-bottom:12px}.rules-aside p{font-size:15px;line-height:1.8}
+.badge-values{list-style:none;margin:0;padding:0}.badge-values li{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:15px 0;border-bottom:1px solid var(--line);font-size:15px;line-height:1.7}
+.badge-values li>a{text-decoration:underline;text-underline-offset:4px}.badge-values strong{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--accent)}
+.badge-values small{display:block;font-size:13px;color:var(--muted)}
+.rule-calculation{margin-top:25px}.rule-calculation p{font-size:15px;margin-top:12px}
+.rule-calculation summary,.earned-points summary{font-size:15px;font-weight:600;cursor:pointer;min-height:48px;padding:12px 0;line-height:1.7}
+.score-breakdown{margin:34px 0 42px}.score-breakdown .section-heading h2{font-size:25px}.score-breakdown .section-heading p{font-size:14px;margin-top:8px}
+.score-ledger{margin:0 0 14px}.score-ledger>div{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:17px 0;border-bottom:1px solid var(--line)}
+.score-ledger dt{font-size:16px;line-height:1.6}.score-ledger dt small{display:block;font-size:13px;color:var(--muted);margin-top:5px}
+.score-ledger dd{margin:0;font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+.score-ledger-total dt,.score-ledger-total dd{font-weight:750}.score-ledger .score-ledger-total{background:var(--wash);border:0;padding:18px;border-radius:12px;margin-top:8px}
+.score-breakdown>.text-link{margin-top:16px;display:inline-flex;align-items:center;gap:12px;min-height:44px;font-size:15px}
+.scoring-preview-note a,.input-help a{color:var(--accent);text-decoration:underline;text-underline-offset:4px}
+@media(max-width:760px){.rules-layout{grid-template-columns:1fr;gap:38px}.rules-intro h1{font-size:43px}.rules-list dt{font-size:18px}.score-breakdown .section-heading h2{font-size:23px}.rules-aside{gap:24px}.score-ledger dt{font-size:15px}.score-ledger dd{font-size:20px}}
