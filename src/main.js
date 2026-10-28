@@ -1,3 +1,6 @@
+import { bingoView, downloadBingo } from './bingo.js';
+import { loadSnapshot } from './load-snapshot.js';
+import { eventView, bindEventView } from './event-view.js';
 import { scoringPage, scoreBreakdown } from './scoring-view.js';
 import { clubhouseBand, clubhouseFooter } from './clubhouse-footer.js';
 import { participants, guilds, courses, guildSummary } from './data.js';
@@ -5,6 +8,8 @@ import { designs, canvasHero, buildersHero, courseLens } from './previews.js';
 
 const app = document.querySelector('#app');
 const query = new URLSearchParams(location.search);
+const eventMode = query.get('data') === 'event' || (import.meta.env.PROD && query.get('data') !== 'demo');
+let eventData = { status: 'loading', snapshot: null };
 const teamPreview = import.meta.env.PROD;
 const design = !teamPreview && Object.hasOwn(designs, query.get('design')) ? query.get('design') : 'clubhouse';
 if (query.has('design') && query.get('design') !== design) {
@@ -40,6 +45,14 @@ function shell(content) {
     ${design === 'clubhouse' ? clubhouseFooter() : `<footer class="site-footer"><div class="chapter-footer"><img src="/assets/gdg-gwalior-badge.webp" alt="GDG ABV-IIITM Gwalior" width="52" height="52"><span>Cloud Study Jam 2026<strong>GDG on Campus · ABV-IIITM Gwalior</strong></span></div><a class="footer-title" href="#leaderboard">A little further, together.</a><div><span>ABV-IIITM Gwalior</span><span>14 Sep - 22 Nov 2026</span></div><p>Independent student event website. All participants and scores in this preview are fictional.</p><a href="#references">Design references & asset credits ${icon('arrow-up-right')}</a></footer>`}
     <dialog id="find-dialog" aria-labelledby="find-title"><div class="dialog-header"><h2 id="find-title">Find your place.</h2><button class="icon-button" id="close-dialog" aria-label="Close profile search">${icon('x')}</button></div><p>Choose a sample profile to explore your progress. This is not sign-in.</p><form id="find-form"><label for="find-query">Name or demo roll number</label><input id="find-query" name="profile" placeholder="Try Aarav or DEMO005" autocomplete="off"><p class="input-help">Only fictional demo roll numbers are supported here.</p><div id="find-results" class="find-results" aria-live="polite"></div></form></dialog>
     <div id="toast" class="toast" role="status"></div>`;
+  if (eventMode) {
+    document.querySelector('.preview-strip .strip-inner>span').textContent = 'Cloud Study Jam · Organizer snapshot';
+    document.querySelector('.my-link')?.remove();
+    const note = document.querySelector('.footer-demo-note');
+    if (note) note.textContent = 'Progress supplied by the event organizers.';
+    const footerNav = document.querySelector('.footer-nav') || document.querySelector('[aria-label="Footer navigation"]');
+    if (footerNav) footerNav.insertAdjacentHTML('beforeend', '<div><h3>Recognition</h3><a href="#fame">Hall of Fame</a></div>');
+  }
   bindShell();
 }
 
@@ -104,7 +117,9 @@ function home() {
   const guildPosition = group.members.findIndex(m => m.id === p.id) + 1;
   const next = participants.findLast(x => x.points > p.points);
   const collected = courses.slice(0, p.badges);
-  shell(`<div class="page-heading"><a href="#leaderboard" class="text-link">${icon('arrow-left')} Back to leaderboard</a><span class="sample-label">Sample profile</span></div><section class="profile-intro"><div><div class="event-context">${own ? 'Your cloud journey' : 'Learner profile'}</div><h1>${own ? `Keep going,<br><span>${escape(p.name.split(' ')[0])}.</span>` : escape(p.name)}</h1><p>${p.badges ? 'Look how far a little curiosity can take you.' : 'Every journey starts with one badge. Your first is waiting.'}</p><a class="text-link" href="#guild/${p.guildId}">${guildIcon(p.guildId)} Guild ${p.guildId} ${icon('arrow-up-right')}</a></div><div class="profile-score"><span>Overall place</span><strong>#${p.rank}</strong><span>${p.points} event points <small>of 500 learners</small></span></div></section><div class="profile-layout"><div><section class="next-step"><div class="soft-icon">${icon(p.rank === 1 ? 'trophy' : 'flag')}</div><div><h2>${p.rank === 1 ? 'You’re setting the pace.' : `${p.nextRankGap} points to your next place.`}</h2><p>${next ? `${escape(next.name)} is just ahead at ${next.points} points.` : 'Keep discovering something new.'}</p></div><a href="#badges" class="button primary">Find a badge ${icon('arrow-up-right')}</a></section>${scoreBreakdown(p, courses, escape)}<section class="collection"><div class="section-heading"><div><h2>Your badge collection</h2><p>Skills you’ve earned. Possibilities ahead.</p></div><strong class="collection-count">${p.badges}<span> / 10</span></strong></div><div class="collection-grid">${courses.map((c, i) => `<a href="${c.url}" target="_blank" rel="noopener noreferrer" class="collection-item ${i < p.badges ? 'earned' : 'unearned'}" aria-label="${escape(c.title)}: ${i < p.badges ? 'completed' : 'not completed'}, opens Google Skills"><span class="collection-symbol">${courseIcon(c)}<span class="completion-mark">${icon(i < p.badges ? 'check' : 'lock-simple')}</span></span><strong>${['Cloud Compute', 'IAM & roles', 'Speech & AI', 'AI Studio', 'Cloud Vision', 'Build a website', 'Gemini', 'Cloud data', 'Speech API', 'Generative AI'][i]}</strong></a>`).join('')}</div><a href="#badges" class="text-link">Explore all badges ${icon('arrow-right')}</a></section><section class="guild-progress"><div class="section-heading"><div><h2>A little stronger, together.</h2><p>${p.guildId} has ${group.members.length} learners on the journey.</p></div><a href="#guild/${p.guildId}" class="text-link">View guild ${icon('arrow-up-right')}</a></div><div class="mini-table">${group.members.slice(0, 3).map((m, i) => personRow(m, i + 1)).join('')}</div></section></div><aside class="profile-aside"><section class="streak-block"><span class="streak-symbol">${icon('fire')}</span><h3>Keep the spark.</h3><div class="streak-numbers"><div><strong>${p.currentStreak}<small>days</small></strong><span>Current streak</span></div><div><strong>${p.bestStreak}<small>days</small></strong><span>Personal best</span></div></div><div class="week-dots" aria-label="Illustrative activity over seven days">${['M','T','W','T','F','S','S'].map((d, i) => `<span class="${i < Math.min(p.currentStreak, 7) ? 'active' : ''}">${i < Math.min(p.currentStreak, 7) ? icon('check') : d}</span>`).join('')}</div><p>Badge activity, shown as sample data.</p></section><section class="milestone-block">${icon('medal')}<span>Personal milestone</span><h3>${p.milestone}</h3><p>${p.badges >= 5 ? 'Five badges behind you. A whole lot ahead.' : 'Your first five badges are a milestone worth making.'}</p><small>Curriculum milestones are separate from competition prizes.</small></section><section class="profile-details"><h3>Your place in ${p.guildId}</h3><strong>${guildPosition}<small> / ${group.members.length} learners</small></strong>${own ? '<button id="change-person" class="text-button">Choose another profile</button>' : `<button class="text-button" data-select="${p.id}">Remember this demo profile</button>`}</section></aside></div>`);
+  shell(`<div class="page-heading"><a href="#leaderboard" class="text-link">${icon('arrow-left')} Back to leaderboard</a><span class="sample-label">Sample profile</span></div><section class="profile-intro"><div><div class="event-context">${own ? 'Your cloud journey' : 'Learner profile'}</div><h1>${own ? `Keep going,<br><span>${escape(p.name.split(' ')[0])}.</span>` : escape(p.name)}</h1><p>${p.badges ? 'Look how far a little curiosity can take you.' : 'Every journey starts with one badge. Your first is waiting.'}</p><a class="text-link" href="#guild/${p.guildId}">${guildIcon(p.guildId)} Guild ${p.guildId} ${icon('arrow-up-right')}</a></div><div class="profile-score"><span>Overall place</span><strong>#${p.rank}</strong><span>${p.points} event points <small>of 500 learners</small></span></div></section><div class="profile-layout"><div><section class="next-step"><div class="soft-icon">${icon(p.rank === 1 ? 'trophy' : 'flag')}</div><div><h2>${p.rank === 1 ? 'You’re setting the pace.' : `${p.nextRankGap} points to your next place.`}</h2><p>${next ? `${escape(next.name)} is just ahead at ${next.points} points.` : 'Keep discovering something new.'}</p></div><a href="#badges" class="button primary">Find a badge ${icon('arrow-up-right')}</a></section>${bingoView(p, escape)}${scoreBreakdown(p, courses, escape)}<section class="collection"><div class="section-heading"><div><h2>Your badge collection</h2><p>Skills you’ve earned. Possibilities ahead.</p></div><strong class="collection-count">${p.badges}<span> / 10</span></strong></div><div class="collection-grid">${courses.map((c, i) => `<a href="${c.url}" target="_blank" rel="noopener noreferrer" class="collection-item ${i < p.badges ? 'earned' : 'unearned'}" aria-label="${escape(c.title)}: ${i < p.badges ? 'completed' : 'not completed'}, opens Google Skills"><span class="collection-symbol">${courseIcon(c)}<span class="completion-mark">${icon(i < p.badges ? 'check' : 'lock-simple')}</span></span><strong>${['Cloud Compute', 'IAM & roles', 'Speech & AI', 'AI Studio', 'Cloud Vision', 'Build a website', 'Gemini', 'Cloud data', 'Speech API', 'Generative AI'][i]}</strong></a>`).join('')}</div><a href="#badges" class="text-link">Explore all badges ${icon('arrow-right')}</a></section><section class="guild-progress"><div class="section-heading"><div><h2>A little stronger, together.</h2><p>${p.guildId} has ${group.members.length} learners on the journey.</p></div><a href="#guild/${p.guildId}" class="text-link">View guild ${icon('arrow-up-right')}</a></div><div class="mini-table">${group.members.slice(0, 3).map((m, i) => personRow(m, i + 1)).join('')}</div></section></div><aside class="profile-aside"><section class="streak-block"><span class="streak-symbol">${icon('fire')}</span><h3>Keep the spark.</h3><div class="streak-numbers"><div><strong>${p.currentStreak}<small>${p.currentStreak === 1 ? 'day' : 'days'}</small></strong><span>Current streak</span></div><div><strong>${p.bestStreak}<small>${p.bestStreak === 1 ? 'day' : 'days'}</small></strong><span>Personal best</span></div></div><div class="week-dots" aria-label="Illustrative activity over seven days">${['M','T','W','T','F','S','S'].map((d, i) => `<span class="${i < Math.min(p.currentStreak, 7) ? 'active' : ''}">${i < Math.min(p.currentStreak, 7) ? icon('check') : d}</span>`).join('')}</div><p>Badge activity, shown as sample data.</p></section><section class="milestone-block">${icon('medal')}<span>Personal milestone</span><h3>${p.milestone}</h3><p>${p.badges >= 10 ? 'All ten curriculum badges collected. Keep exploring.' : p.badges >= 5 ? 'Five badges behind you. A whole lot ahead.' : 'Your first five badges are a milestone worth making.'}</p><small>Curriculum milestones are separate from competition prizes.</small></section><section class="profile-details"><h3>Your place in ${p.guildId}</h3><strong>${guildPosition}<small> / ${group.members.length} learners</small></strong>${own ? '<button id="change-person" class="text-button">Choose another profile</button>' : `<button class="text-button" data-select="${p.id}">Remember this demo profile</button>`}</section></aside></div>`);
+  document.querySelector('[data-bingo-download]')?.addEventListener('click', async e => { const button=e.currentTarget;button.disabled=true;try{await downloadBingo(p);}catch(error){document.querySelector('#toast').textContent=error.message;}finally{button.disabled=false;} });
+  document.querySelector('[data-bingo-caption]')?.addEventListener('click', async e=>{try{await navigator.clipboard.writeText('Nine steps, completed! My Cloud Bingo with @gdg_oncampus_iiitm at ABV-IIITM Gwalior. #CloudStudyJams');e.currentTarget.textContent='Caption copied';}catch{e.currentTarget.textContent='Clipboard unavailable';}});
   document.querySelector('#change-person')?.addEventListener('click', openFind);
   document.querySelector('[data-select]')?.addEventListener('click', e => remember(e.currentTarget.dataset.select));
 }
@@ -153,13 +168,34 @@ function remember(id) {
 function openFind() { updateFind('Aarav'); document.querySelector('#find-dialog').showModal(); document.querySelector('#find-query').focus(); }
 function render() {
   const r = route();
+  if (eventMode && r !== 'rules' && r !== 'references') {
+    shell(eventData.snapshot ? eventView(eventData.snapshot, eventData.status, r) : `
+      <section class="simple-intro" role="status"><h1>${eventData.status === 'loading' ? 'Gathering the latest progress…' : 'Scores are on their way.'}</h1>
+      <p>${eventData.status === 'loading' ? 'Loading the organizer’s published snapshot.' : 'The organizers have not published a valid public snapshot yet. Please check back soon.'}</p>
+      ${eventData.status === 'loading' ? '' : '<button class="button primary" id="retry-event">Try again</button>'}</section>`);
+    document.querySelector('.preview-strip .strip-inner>span').textContent = 'Cloud Study Jam · Organizer data';
+    document.querySelector('.my-link')?.remove();
+    const eventFooterNote = document.querySelector('.footer-demo-note');
+    if (eventFooterNote) eventFooterNote.textContent = 'Progress supplied by the event organizers.';
+    bindEventView(eventData.snapshot);
+    document.querySelector('#retry-event')?.addEventListener('click', refreshEvent);
+    document.title = 'Study Jam · Campus progress';
+    return;
+  }
   if (r === 'home' || r.startsWith('profile/')) home();
   else if (r === 'guilds' || r.startsWith('guild/')) guildPage();
   else if (r === 'badges') badgesPage();
-  else if (r === 'rules') shell(scoringPage(courses, escape));
+  else if (r === 'rules') shell(eventMode ? scoringPage(courses, escape).replace('Rules adopted 28 Oct 2026 · Preview data', 'Event scoring rules · 2026') : scoringPage(courses, escape));
   else if (r === 'references') references();
   else leaderboard();
   document.title = `${r === 'rules' ? 'Scoring rules' : r === 'home' ? 'My progress' : r === 'badges' ? 'Badges' : r.startsWith('guild') ? 'Guilds' : 'Leaderboard'} · ${designs[design].name} · Study Jam`;
 }
 window.addEventListener('hashchange', () => { render(); window.scrollTo({ top: 0, behavior: 'instant' }); document.querySelector('#main').focus({ preventScroll: true }); });
 render();
+async function refreshEvent() {
+  eventData = { status: 'loading', snapshot: null };
+  render();
+  eventData = await loadSnapshot();
+  render();
+}
+if (eventMode) refreshEvent();

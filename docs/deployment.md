@@ -1,8 +1,23 @@
 # Deployment record
 
-Selected direction: Guild Clubhouse. Public build contains fictional demonstration data only.
+## Production
 
-## Build and upload
+- Project: Cloudflare Pages `gdg-cloud-study-jam-2026`, production branch `main`.
+- URL: https://gdg-cloud-study-jam-2026.pages.dev/
+- Source: private repository https://github.com/knowprasad/gdg-cloud-study-jam-2026.
+- Latest verified website release: immutable deployment https://8042a8ef.gdg-cloud-study-jam-2026.pages.dev, built from website commit `5f8acc9` on 28 October 2026.
+- The release has the Guild Clubhouse interface, public rules, profile score ledger, and fictional example learners. It does not show real student data or the local Bingo work.
+
+## Release history
+
+| Date | Deployment | Source | Notes |
+|---|---|---|---|
+| 28 Oct 2026 | `https://554b9291.gdg-cloud-study-jam-2026.pages.dev` | `6eabf68` | Initial private-repository team preview; Clubhouse locked as production direction. |
+| 28 Oct 2026 | `https://8042a8ef.gdg-cloud-study-jam-2026.pages.dev` | `5f8acc9` | Scoring rules and profile score ledger. Browser verification covered the rules route and example profiles. |
+
+Commit `e3aff49` adds organizer tab-order code only; it is not a website deployment. Local changes after these releases are not published.
+
+## Repeat the direct Pages upload
 
 ```sh
 npm ci
@@ -10,17 +25,6 @@ npm run build
 npx wrangler@4.45.0 pages deploy dist --project-name=gdg-cloud-study-jam-2026 --branch=main
 ```
 
-Cloudflare login is required for uploads.
+Wrangler login is required. This project uses direct uploads; pushing to GitHub alone does not publish a website update. Do not deploy the experimental `functions/api/leaderboard.js` or connect real workbook data until the privacy and identifier release blockers in [project-handoff.md](project-handoff.md) are resolved.
 
-## Published 28 October 2026
-
-- Source: https://github.com/knowprasad/gdg-cloud-study-jam-2026 (private), application source commit `6eabf68`.
-- Team preview: https://gdg-cloud-study-jam-2026.pages.dev/
-- Immutable deployment: https://554b9291.gdg-cloud-study-jam-2026.pages.dev
-- Production branch: main.
-- Build: npm run build. 44 static files uploaded successfully.
-- Verified the live leaderboard and personal progress in the browser; production locks Clubhouse and labels sample data.
-
-Wrangler4.154 attempted automatic framework conversion during project creation. That process was stopped and its package changes reverted. The tested direct Pages upload uses4.45.0; no runtime framework/plugin dependency was added.
-
-The Pages project uses direct uploads. Changes are published by rebuilding and rerunning the upload command; pushing to GitHub alone does not deploy.
+Wrangler `4.154` previously attempted automatic framework conversion during project setup. That process was stopped and its package changes were reverted. The verified static upload used Wrangler `4.45.0`; no runtime framework/plugin dependency was added.

@@ -1,0 +1,30 @@
+// Server-side read-only adapter. Never return source rows or organizer-only fields.
+const SHEET='1sTn7Q6VVqkKHFo2ZEDrnNVnwe0gk8j22knsj8D1Ss6c';
+export function parseCsv(text){const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const ch=text[i];if(ch==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}else if(ch===','&&!quoted){row.push(cell);cell='';}else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(Boolean))rows.push(row);row=[];cell='';}else cell+=ch;}row.push(cell);if(row.some(Boolean))rows.push(row);return rows;}
+async function readTab(name,required=true){const ranges={'Leaderboard':'A4:V','Tracker':'A1:AN','Groups':'A4:B','Bingo Progress':'A1:P','Refresh Log':'A1:H'};const url=`https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?tqx=out:csv&headers=1&range=${encodeURIComponent(ranges[name])}&sheet=${encodeURIComponent(name)}`;const r=await fetch(url,{signal:AbortSignal.timeout(15000)});if(!r.ok||!r.headers.get('content-type')?.includes('csv')){if(!required)return[];throw new Error('Organizer report unavailable');}return parseCsv(await r.text());}
+const num=v=>Number.isFinite(Number(v))?Number(v):0;
+async function opaque(s){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,24);}
+export async function buildSnapshot(){
+ const [board,tracker,groups,bingo,log]=await Promise.all([readTab('Leaderboard'),readTab('Tracker'),readTab('Groups',false),readTab('Bingo Progress',false),readTab('Refresh Log')]);
+ const hi=board.findIndex(r=>r[0]==='Rank'&&r[1]==='Name');if(hi<0)throw new Error('Leaderboard layout changed');
+ const th=tracker[0]||[];const ti=Object.fromEntries(th.map((h,i)=>[h,i]));if(ti['Roll']===undefined||ti['Profile ID']===undefined)throw new Error('Tracker layout changed');
+ const byRoll=new Map();for(const r of tracker.slice(1)){if(r[ti.Status]==='Duplicate (superseded)')continue;byRoll.set(r[ti.Roll],r);}
+ const bi=bingo.findIndex(r=>r[0]==='Name'&&r[1]==='Roll');const byBingo=new Map((bi<0?[]:bingo.slice(bi+1)).map(r=>[r[1],r]));
+ const courseIds=['compute','iam','speech','studio','vision','website','gemini','data','speech-api','gen-ai'];const detailsStart=th.indexOf('The Basics of Google Cloud Compute');
+ const guildNames=[...new Set(board.slice(hi+1).filter(r=>/^\d+$/.test(r[0])).map(r=>r[3]).filter(x=>x&&x!=='-'))];
+ const guilds=await Promise.all(guildNames.map(async(name,i)=>({id:'g-'+await opaque(name),name,color:['blue','green','amber','rose'][i%4],symbol:'flag',motto:'Learning together, one badge at a time.',assigned:true})));
+ guilds.push({id:'unassigned',name:'Not assigned yet',color:'amber',symbol:'users-three',motto:'Your organizer has not assigned a guild yet.',assigned:false});
+ const guildMap=new Map(guilds.map(g=>[g.name,g.id]));const participants=[];
+ for(const r of board.slice(hi+1)){if(!/^\d+$/.test(r[0]))continue;const t=byRoll.get(r[2]);if(!t||!t[ti['Profile ID']])continue;const b=byBingo.get(r[2]);const badgeDetails=[];if(detailsStart>=0)for(let i=0;i<10;i++){const c=t[detailsStart+i]||'';if(c.startsWith('✓'))badgeDetails.push({id:courseIds[i],date:c.slice(2).trim(),points:[4,4,4,4,12,13,4,4,4,16][i]});}
+ const approvals=[];if(b){['first-badge','credits','ai-studio','kickoff','five-badges','story','second-session','community','ten-badges'].forEach((id,i)=>{if(b[3+i]==='Complete')approvals.push(id);});}
+ else if(t[ti['Follow-up status (manual)']]==='Credits redeemed')approvals.push('credits');
+ const attendance=b?num(b[12]):num(r[9]);const activities=b?num(b[13]):0;const bonus=b?num(b[14]):0;const total=num(r[4]);
+ if(Math.abs(num(r[5])+num(r[6])+num(r[7])+num(r[8])+num(r[9])-total)>.11)throw new Error('Score reconciliation failed');
+ participants.push({id:'p-'+await opaque(t[ti['Profile ID']]),name:r[1],guildId:guildMap.get(r[3])||'unassigned',rank:num(r[0]),points:total,badges:num(r[10]),currentStreak:null,bestStreak:num(r[14]),lifetimeXp:num(r[13]),milestone:num(r[10])>=10?'Curriculum complete':num(r[10])>=5?'Halfway there':'Getting started',synthetic:false,approvedActivities:approvals,pendingActivities:[],scoreBreakdown:{badges:num(r[5]),xp:num(r[6]),streak:num(r[7]),earlyFinish:num(r[8]),attendance,activities,bingo:bonus,total,badgeDetails,bestStreak:num(r[14]),sessions:attendance/2,completedAt:r[12]==='Yes'?r[18]:null},updateStatus:t[ti.Status]==='OK'?'verified':'delayed'});
+ }
+ if(!participants.length)throw new Error('Empty report; keeping previous data');
+ participants.forEach((p,i)=>{const next=participants.slice(0,i).findLast(x=>x.points>p.points);p.nextRankGap=next?Math.round((next.points-p.points+.1)*10)/10:null;});
+ const last=log.at(-1);return{schemaVersion:1,mode:'live',fetchedAt:new Date().toISOString(),sourceUpdatedLabel:last?.[0]||'Unknown',refreshStatus:last?.[1]||'Unknown',participants,guilds,hallOfFame:[],notice:'Organizer-selected weekly awards have not been published yet.'};
+}
+export async function onRequestGet(context){const key=new Request(new URL('/api/leaderboard-cache-v1',context.request.url));const cache=caches.default;const old=await cache.match(key);if(old){const data=await old.clone().json();if(Date.now()-Date.parse(data.fetchedAt)<300000)return old;}
+ try{const data=await buildSnapshot();const response=Response.json(data,{headers:{'Cache-Control':'public,max-age=60,s-maxage=300','X-Content-Type-Options':'nosniff'}});const stored=Response.json(data,{headers:{'Cache-Control':'public,max-age=604800'}});context.waitUntil(cache.put(key,stored));return response;}catch{if(old){const data=await old.json();return Response.json({...data,refreshStatus:'DELAYED',notice:'Showing the last successful update while the organizer source is unavailable.'},{headers:{'Cache-Control':'no-store'}});}return Response.json({error:'Scores are temporarily unavailable. Please try again shortly.'},{status:503,headers:{'Cache-Control':'no-store'}});}}

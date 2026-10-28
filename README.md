@@ -7,7 +7,9 @@ Guild Clubhouse is the selected design. Production builds show only this directi
 
 **Source:** https://github.com/knowprasad/gdg-cloud-study-jam-2026 (private).
 
-This is a team-feedback preview: all 500 learners, scores, streaks and guild assignments are fictional. Real scoring and the Google Sheets pipeline are not connected.
+**Current implementation and safety status:** [docs/project-handoff.md](docs/project-handoff.md). It records what is live, what remains local, product decisions, and the Google Sheet restrictions.
+
+Production uses a sanitized organizer snapshot. Read [the current release status and update guide](docs/v1-release.md) for functionality, refresh instructions, and limitations. Demo data remains available explicitly through `?data=demo`.
 
 ## Run locally
 

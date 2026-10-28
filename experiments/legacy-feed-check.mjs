@@ -1,0 +1,3 @@
+import {buildSnapshot} from '../functions/api/leaderboard.js';
+import fs from 'node:fs/promises';
+const data=await buildSnapshot();const serialized=JSON.stringify(data);for(const key of ['"roll"','"email"','"Private organizer note"'])if(serialized.includes(key))throw Error('Private field leaked');console.log({participants:data.participants.length,guilds:data.guilds.length-1,refreshStatus:data.refreshStatus,components:data.participants.every(p=>Math.abs(p.points-(p.scoreBreakdown.badges+p.scoreBreakdown.streak+p.scoreBreakdown.earlyFinish+p.scoreBreakdown.attendance+p.scoreBreakdown.activities+p.scoreBreakdown.bingo))<.11)});await fs.writeFile('design-previews/sanitized-snapshot.json',serialized);

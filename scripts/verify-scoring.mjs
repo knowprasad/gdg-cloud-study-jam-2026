@@ -21,7 +21,7 @@ assert.equal(scoreProgress([{id:courses[0].id,date:'2026-11-23'}],[],courses).to
 assert.equal(scoreProgress([{id:courses[0].id,date:'2026-11-22'}],[],courses).badges,4);
 assert.equal(scoreProgress([],[],courses).total,0);
 assert.equal(scoreProgress([], [{id:'same',date:'2026-10-20'},{id:'same',date:'2026-10-21'}],courses).attendance,2);
-for(const p of participants)assert.equal(p.points,Number((p.scoreBreakdown.badges+p.scoreBreakdown.streak+p.scoreBreakdown.earlyFinish+p.scoreBreakdown.attendance).toFixed(1)));
+for(const p of participants)assert.equal(p.points,Number((p.scoreBreakdown.badges+p.scoreBreakdown.streak+p.scoreBreakdown.earlyFinish+p.scoreBreakdown.attendance+(p.scoreBreakdown.activities||0)+(p.scoreBreakdown.bingo||0)).toFixed(1)));
 console.log('PASS: cached results, end cutoff, zero learners, guild average, XP off, badge minimum, attendance dedup/cap, all500 breakdown totals',result);
 
 const attendanceResult=vm.runInContext(`(()=>{
