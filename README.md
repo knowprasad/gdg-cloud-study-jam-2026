@@ -3,6 +3,10 @@
 Mobile-first leaderboard and progress website for GDG on Campus ABV-IIITM Gwalior.
 Guild Clubhouse is the selected design. Production builds show only this direction.
 
+**Team preview:** https://gdg-cloud-study-jam-2026.pages.dev/
+
+**Source:** https://github.com/knowprasad/gdg-cloud-study-jam-2026 (private).
+
 This is a team-feedback preview: all 500 learners, scores, streaks and guild assignments are fictional. Real scoring and the Google Sheets pipeline are not connected.
 
 ## Run locally
