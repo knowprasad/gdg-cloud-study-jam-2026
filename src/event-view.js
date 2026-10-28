@@ -1,6 +1,7 @@
 import { bingoView, downloadBingo } from './bingo.js';
 import { courses } from './data.js';
 import { clubhouseBand } from './clubhouse-footer.js';
+import { guildView, personalGuild } from './guilds.js';
 const escape = value => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[char]));
@@ -18,14 +19,15 @@ export function eventView(snapshot, status, hash) {
   const updated = new Intl.DateTimeFormat('en-IN', {
     dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata',
   }).format(new Date(snapshot.updatedAt));
-  const rows = list => list.map(person => `
-    <a class="person-row" href="#profile/${person.id}">
+  const rows = list => list.map((person, index) => `
+    <a class="person-row" href="#profile/${person.id}" ${index >= 30 ? 'hidden' : ''}>
       <span class="rank">${person.rank}</span>
       <span class="person-name">${escape(person.name)}<small>${escape(guildName(person.guildId))}</small></span>
       <span class="badges-column">${person.badgesCompleted}/10</span>
       <strong>${person.points.toFixed(1)}</strong>
     </a>`).join('');
   const intro = `<p class="event-data-status" role="status">Last updated ${escape(updated)} IST${status === 'stale' ? ' · Showing saved progress. Refresh is temporarily unavailable.' : ''}</p>`;
+  if (hash.startsWith('profile/') && !profile) return `${intro}<section class="empty-state"><h1>Profile not found</h1><p>This profile link may have changed. Find your name in the standings.</p><a href="#leaderboard" class="button primary">Find my place</a></section>`;
   if (hash === 'badges') return `${intro}<section class="simple-intro"><h1>Your next cloud skill.</h1><p>Ten curriculum badges. Each eligible completion counts once.</p></section><div class="catalog-grid">${courses.map(course => `<article class="course-tile"><span class="category">${escape(course.category)}</span><h2>${escape(course.title)}</h2><p>${Math.max(4, course.credits)} event points</p><a class="text-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Open Google Skills ↗</a></article>`).join('')}</div>`;
   if (hash === 'fame') return `${intro}<section class="simple-intro"><h1>Hall of Fame</h1><p>Weekly recognition from the organizing team.</p></section><section class="empty-state"><h2>The first chapter is coming.</h2><p>Weekly MVP and top-guild awards will appear once organizers announce them.</p><a class="button primary" href="#leaderboard">Explore the standings</a></section>`;
   if (profile) {
@@ -40,16 +42,10 @@ export function eventView(snapshot, status, hash) {
         <p>${profile.badgesCompleted} of 10 curriculum badges completed.</p><a href="#rules" class="text-link">How scoring works →</a>
         <p>Best badge streak: ${profile.bestStreak ?? 'Not supplied'} days.</p></section>
         ${profile.badgeDetails ? `<section class="score-breakdown"><h2>Your completed badges</h2><ul class="badge-values">${profile.badgeDetails.map(badge => `<li><span>${escape(courses.find(course => course.id === badge.id)?.title || badge.id)}<small>${escape(badge.date)}</small></span><strong>+${badge.points}</strong></li>`).join('')}</ul></section>` : ''}
+        ${personalGuild(snapshot, profile)}
         ${profile.badgeDetails ? bingoView(bingoPerson, escape) : '<p>Detailed badge and Bingo evidence has not been published yet.</p>'}`;
   }
-  if (hash === 'guilds') {
-    const guilds = snapshot.guilds.map(guild => {
-      const members = people.filter(person => person.guildId === guild.id);
-      return { ...guild, members, average: members.length ? members.reduce((sum, person) => sum + person.points, 0) / members.length : 0 };
-    }).sort((a, b) => b.average - a.average);
-    return `${intro}<section class="simple-intro"><h1>Stronger, together.</h1><p>Guild scores average every assigned member, including zero-point learners.</p></section>
-      ${guilds.length ? guilds.map(guild => `<section class="standings"><h2>${escape(guild.name)}</h2><p>${guild.members.length} members · ${guild.average.toFixed(1)} average points</p>${rows(guild.members)}</section>`).join('') : '<section class="empty-state"><h2>Guilds are taking shape.</h2><p>Assignments will appear when the organizers publish them.</p></section>'}`;
-  }
+  if (hash === 'guilds' || hash.startsWith('guild/')) return `${intro}${guildView(snapshot, hash.startsWith('guild/') ? decodeURIComponent(hash.slice(6)) : null)}`;
   return `<section class="board-intro clubhouse-intro">
     <div class="intro-copy"><div class="club-event"><img src="/assets/google-cloud-logo.svg" alt="Google Cloud" width="123" height="20"><span>Study Jam 2026</span></div>
       <h1>Your guild.<br><span>Your next level</span><span class="headline-dot" aria-hidden="true"></span></h1>
@@ -65,7 +61,7 @@ export function eventView(snapshot, status, hash) {
       <div class="board-controls"><label class="search-field"><span class="sr-only">Search learners</span><input id="event-search" type="search" placeholder="Search your name…"></label>
       <label class="guild-select"><span class="sr-only">Filter guilds</span><select id="event-guild"><option value="">All learners</option>${snapshot.guilds.map(guild => `<option value="${escape(guild.id)}">${escape(guild.name)}</option>`).join('')}<option value="unassigned">Guild not assigned</option></select></label></div>
       <div class="table-header"><span>Place</span><span>Learner</span><span class="badges-column">Badges</span><span>Points</span></div>
-      <div id="event-rows">${rows(people)}</div><p id="event-results" role="status">${people.length} learners</p></section>`;
+      <div id="event-rows">${rows(people)}</div><div class="board-bottom"><p id="event-results" role="status">${Math.min(30, people.length)} of ${people.length} learners</p><button class="text-button" id="event-more" ${people.length <= 30 ? 'hidden' : ''}>Show more learners</button></div></section>`;
 }
 
 export function bindEventView(snapshot) {
@@ -91,18 +87,23 @@ export function bindEventView(snapshot) {
   if (!search || !guild) return;
   const rows = [...document.querySelectorAll('#event-rows .person-row')];
   const sorted = [...snapshot.participants].sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name));
+  let limit = 30;
+  const more = document.querySelector('#event-more');
   function filter() {
     let count = 0;
     rows.forEach((row, index) => {
       const person = sorted[index];
-      row.hidden = !person.name.toLowerCase().includes(search.value.trim().toLowerCase()) ||
-        Boolean(guild.value && (guild.value === 'unassigned' ? person.guildId !== null : person.guildId !== guild.value));
-      if (!row.hidden) count++;
+      const matches = person.name.toLowerCase().includes(search.value.trim().toLowerCase()) &&
+        (!guild.value || (guild.value === 'unassigned' ? person.guildId === null : person.guildId === guild.value));
+      if (matches) count++;
+      row.hidden = !matches || count > limit;
     });
-    document.querySelector('#event-results').textContent = count ? `${count} learners` : 'No learners found. Try another name or guild.';
+    document.querySelector('#event-results').textContent = count ? `${Math.min(limit, count)} of ${count} learners` : 'No learners found. Try another name or guild.';
+    if (more) more.hidden = count <= limit;
   }
-  search.addEventListener('input', filter);
-  guild.addEventListener('change', filter);
+  search.addEventListener('input', () => { limit = 30; filter(); });
+  guild.addEventListener('change', () => { limit = 30; filter(); });
+  more?.addEventListener('click', () => { limit += 30; filter(); });
   document.querySelector('[data-event-find]')?.addEventListener('click', () => {
     search.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
     search.focus({ preventScroll: true });

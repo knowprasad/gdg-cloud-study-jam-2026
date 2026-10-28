@@ -46,7 +46,8 @@ export function validateSnapshot(input) {
   }
   const guildIds = new Set();
   for (const guild of input.guilds) {
-    fields(guild, ['id', 'name']);
+    fields(guild, ['id', 'name', 'headId']);
+    if (guild.headId !== undefined && guild.headId !== null && !ids.has(guild.headId)) throw new Error('Unknown guild head');
     if (typeof guild.id !== 'string' || typeof guild.name !== 'string' || !guild.name.trim() || guildIds.has(guild.id)) {
       throw new Error('Invalid guild.');
     }

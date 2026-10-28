@@ -368,3 +368,11 @@ body{overflow-x:clip}
 [data-design=clubhouse] #event-standings .person-row{min-height:80px}
 [data-design=clubhouse] #event-results{font-size:14px;padding-top:20px}
 @media(max-width:760px){[data-design=clubhouse] #event-standings{padding:24px 12px}[data-design=clubhouse] .event-pass{padding:24px}[data-design=clubhouse] .event-pass h2{font-size:28px}}
+.guild-crest{display:inline-flex;position:relative;align-items:center;justify-content:center;width:62px;height:70px;clip-path:polygon(0 0,100% 0,100% 72%,50% 100%,0 72%);background:var(--wash);color:var(--accent);margin-bottom:16px;flex-shrink:0}
+.guild-crest img{opacity:.25;position:absolute}.guild-crest>span{font-size:28px;font-weight:800;position:relative}
+.gdg-tone-0{background:#e8f0fe;color:#185abc}.gdg-tone-1{background:#fce8e6;color:#b3261e}.gdg-tone-2{background:#fef7e0;color:#785800}.gdg-tone-3{background:#e6f4ea;color:#137333}
+[data-theme=dark] .gdg-tone-0{background:#26364f;color:#a8c7fa}[data-theme=dark] .gdg-tone-1{background:#492c2b;color:#f2b8b5}[data-theme=dark] .gdg-tone-2{background:#443c25;color:#fdd663}[data-theme=dark] .gdg-tone-3{background:#203b2b;color:#81c995}
+.guild-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-block:1px solid var(--line);padding:28px 0;margin-bottom:36px;gap:20px}.guild-summary strong{display:block;font-size:32px;font-variant-numeric:tabular-nums}.guild-summary span{font-size:14px;color:var(--muted)}
+.guild-detail-intro>.guild-crest{display:flex;margin-top:28px}.guild-tile progress{width:100%;accent-color:var(--achievement)}
+.personal-guild{display:flex;gap:24px;align-items:center;margin:36px 0;padding-block:28px;border-block:1px solid var(--line)}.personal-guild .guild-crest{margin:0}.personal-guild p{margin:10px 0;font-size:16px}
+@media(max-width:600px){.guild-summary{gap:12px}.guild-summary strong{font-size:25px}.guild-summary span{font-size:13px}.personal-guild{gap:16px;align-items:flex-start}.guild-grid{grid-template-columns:1fr}.guild-tile p{font-size:15px}.guild-tile-bottom{font-size:13px}.guild-members{font-size:14px}}
