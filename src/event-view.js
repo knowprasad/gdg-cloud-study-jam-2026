@@ -1,5 +1,6 @@
 import { bingoView, downloadBingo } from './bingo.js';
 import { courses } from './data.js';
+import { clubhouseBand } from './clubhouse-footer.js';
 const escape = value => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[char]));
@@ -24,7 +25,7 @@ export function eventView(snapshot, status, hash) {
       <span class="badges-column">${person.badgesCompleted}/10</span>
       <strong>${person.points.toFixed(1)}</strong>
     </a>`).join('');
-  const intro = `<p class="event-data-status" role="status">${status === 'stale' ? 'Saved update · Refresh temporarily unavailable' : 'Organizer snapshot'} · ${escape(updated)} IST</p>`;
+  const intro = `<p class="event-data-status" role="status">Last updated ${escape(updated)} IST${status === 'stale' ? ' · Showing saved progress. Refresh is temporarily unavailable.' : ''}</p>`;
   if (hash === 'badges') return `${intro}<section class="simple-intro"><h1>Your next cloud skill.</h1><p>Ten curriculum badges. Each eligible completion counts once.</p></section><div class="catalog-grid">${courses.map(course => `<article class="course-tile"><span class="category">${escape(course.category)}</span><h2>${escape(course.title)}</h2><p>${Math.max(4, course.credits)} event points</p><a class="text-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Open Google Skills ↗</a></article>`).join('')}</div>`;
   if (hash === 'fame') return `${intro}<section class="simple-intro"><h1>Hall of Fame</h1><p>Weekly recognition from the organizing team.</p></section><section class="empty-state"><h2>The first chapter is coming.</h2><p>Weekly MVP and top-guild awards will appear once organizers announce them.</p><a class="button primary" href="#leaderboard">Explore the standings</a></section>`;
   if (profile) {
@@ -49,8 +50,18 @@ export function eventView(snapshot, status, hash) {
     return `${intro}<section class="simple-intro"><h1>Stronger, together.</h1><p>Guild scores average every assigned member, including zero-point learners.</p></section>
       ${guilds.length ? guilds.map(guild => `<section class="standings"><h2>${escape(guild.name)}</h2><p>${guild.members.length} members · ${guild.average.toFixed(1)} average points</p>${rows(guild.members)}</section>`).join('') : '<section class="empty-state"><h2>Guilds are taking shape.</h2><p>Assignments will appear when the organizers publish them.</p></section>'}`;
   }
-  return `${intro}<section class="simple-intro"><h1>Your campus.<br>Your next level.</h1><p>${people.length} learners. Every step counts.</p></section>
-    <section class="standings"><div class="section-heading"><h2>The leaderboard</h2><button class="button secondary" data-event-find>Find me</button></div>
+  return `<section class="board-intro clubhouse-intro">
+    <div class="intro-copy"><div class="club-event"><img src="/assets/google-cloud-logo.svg" alt="Google Cloud" width="123" height="20"><span>Study Jam 2026</span></div>
+      <h1>Your guild.<br><span>Your next level</span><span class="headline-dot" aria-hidden="true"></span></h1>
+      <p>A Cloud Study Jam for ABV-IIITM students.<br>Ten badges to learn, collect and complete.</p>
+      <div class="hero-actions"><button class="button primary" data-event-find>Find my place ↗</button><a class="text-link" href="#rules">How to earn points →</a></div>
+      <div class="club-community"><span>${people.length} learners</span><span>10 skill badges</span><span>Until 22 Nov</span></div>
+    </div><div class="intro-feature"><div class="member-ticket">
+      <div class="ticket-colorline" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="ticket-top"><span>Your campus learning club</span><span>2026</span></div>
+      <div class="event-pass"><img src="/assets/gdg-gwalior-badge.webp" alt="GDG on Campus ABV-IIITM Gwalior" width="100" height="100"><h2>A little further,<br>together.</h2><p>Every badge is a step forward.<br>Your next one is waiting.</p><a class="button secondary" href="#badges">Explore the badges ↗</a></div>
+      <a href="#home">Find your progress →</a></div><div class="ticket-caption">Learn something. Make it yours.</div></div>
+    </section>${clubhouseBand('event-hero')}${intro}
+    <section class="standings" id="event-standings"><div class="section-heading"><h2>The leaderboard</h2><span>${people.length} learners</span></div>
       <div class="board-controls"><label class="search-field"><span class="sr-only">Search learners</span><input id="event-search" type="search" placeholder="Search your name…"></label>
       <label class="guild-select"><span class="sr-only">Filter guilds</span><select id="event-guild"><option value="">All learners</option>${snapshot.guilds.map(guild => `<option value="${escape(guild.id)}">${escape(guild.name)}</option>`).join('')}<option value="unassigned">Guild not assigned</option></select></label></div>
       <div class="table-header"><span>Place</span><span>Learner</span><span class="badges-column">Badges</span><span>Points</span></div>
@@ -92,5 +103,8 @@ export function bindEventView(snapshot) {
   }
   search.addEventListener('input', filter);
   guild.addEventListener('change', filter);
-  document.querySelector('[data-event-find]')?.addEventListener('click', () => search.focus());
+  document.querySelector('[data-event-find]')?.addEventListener('click', () => {
+    search.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    search.focus({ preventScroll: true });
+  });
 }

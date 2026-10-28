@@ -347,3 +347,24 @@ body{overflow-x:clip}
 /* Filtering must override component display rules. */
 [hidden]{display:none!important}
 .event-data-status{font-size:14px;line-height:1.7;padding:20px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+.event-pass{padding:28px;text-align:center}.event-pass>img{display:block;margin:0 auto 18px}.event-pass h2{font-size:30px;line-height:1.25}.event-pass p{font-size:16px;margin:16px 0 22px}.event-pass .button{font-size:14px}
+
+/* GDG palette: neutral reading surfaces, blue navigation, green achievement,
+   yellow actions and red used only in the four-colour signature. */
+:root[data-design=clubhouse]{--page:#f8f9fa;--surface:#fff;--ink:#202124;--muted:#5f6368;--accent:#1967d2;--accent-hover:#185abc;--wash:#eaf2ff;--line:#dadce0;--soft:#f1f3f4;--tint:#d2e3fc;--header:#f8f9fa;--gdg-blue:#4285f4;--gdg-red:#ea4335;--gdg-yellow:#fbbc05;--gdg-green:#34a853;--achievement:#137333;--achievement-surface:#e6f4ea}
+:root[data-design=clubhouse][data-theme=dark]{--page:#17191c;--surface:#202327;--ink:#e8eaed;--muted:#bdc1c6;--accent:#a8c7fa;--accent-hover:#d2e3fc;--wash:#253248;--line:#42464d;--soft:#22262c;--tint:#314565;--header:#1c1f23;--achievement:#81c995;--achievement-surface:#203b2b}
+[data-design=clubhouse] .preview-strip{background:var(--soft);color:var(--muted);border-bottom:1px solid var(--line)}
+[data-design=clubhouse] .member-ticket{background:var(--surface)}
+[data-design=clubhouse] .bingo-square.complete{background:var(--achievement-surface);border-color:var(--achievement)}
+[data-design=clubhouse] .bingo-square.complete .bingo-mark{color:var(--achievement)}
+[data-design=clubhouse] .bingo-square.complete .bingo-status{color:var(--ink)}
+[data-design=clubhouse] .event-pass h2{font-weight:700;letter-spacing:-.03em}
+[data-design=clubhouse] .event-pass{padding:32px}
+[data-design=clubhouse] .event-pass>img{width:104px;height:104px}
+[data-design=clubhouse] .event-pass p{max-width:28ch;margin:18px auto 24px}
+[data-design=clubhouse] #event-standings{padding:30px 24px}
+[data-design=clubhouse] #event-standings .person-name{font-size:16px;line-height:1.5}
+[data-design=clubhouse] #event-standings .person-name small{font-size:13px;line-height:1.6;margin-top:4px}
+[data-design=clubhouse] #event-standings .person-row{min-height:80px}
+[data-design=clubhouse] #event-results{font-size:14px;padding-top:20px}
+@media(max-width:760px){[data-design=clubhouse] #event-standings{padding:24px 12px}[data-design=clubhouse] .event-pass{padding:24px}[data-design=clubhouse] .event-pass h2{font-size:28px}}

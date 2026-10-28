@@ -46,10 +46,10 @@ function shell(content) {
     <dialog id="find-dialog" aria-labelledby="find-title"><div class="dialog-header"><h2 id="find-title">Find your place.</h2><button class="icon-button" id="close-dialog" aria-label="Close profile search">${icon('x')}</button></div><p>Choose a sample profile to explore your progress. This is not sign-in.</p><form id="find-form"><label for="find-query">Name or demo roll number</label><input id="find-query" name="profile" placeholder="Try Aarav or DEMO005" autocomplete="off"><p class="input-help">Only fictional demo roll numbers are supported here.</p><div id="find-results" class="find-results" aria-live="polite"></div></form></dialog>
     <div id="toast" class="toast" role="status"></div>`;
   if (eventMode) {
-    document.querySelector('.preview-strip .strip-inner>span').textContent = 'Cloud Study Jam · Organizer snapshot';
+    document.querySelector('.preview-strip .strip-inner>span').textContent = 'Cloud Study Jam 2026 · ABV-IIITM';
     document.querySelector('.my-link')?.remove();
     const note = document.querySelector('.footer-demo-note');
-    if (note) note.textContent = 'Progress supplied by the event organizers.';
+    if (note) note.textContent = 'Learn together. Keep moving forward.';
     const footerNav = document.querySelector('.footer-nav') || document.querySelector('[aria-label="Footer navigation"]');
     if (footerNav) footerNav.insertAdjacentHTML('beforeend', '<div><h3>Recognition</h3><a href="#fame">Hall of Fame</a></div>');
   }
@@ -171,12 +171,12 @@ function render() {
   if (eventMode && r !== 'rules' && r !== 'references') {
     shell(eventData.snapshot ? eventView(eventData.snapshot, eventData.status, r) : `
       <section class="simple-intro" role="status"><h1>${eventData.status === 'loading' ? 'Gathering the latest progress…' : 'Scores are on their way.'}</h1>
-      <p>${eventData.status === 'loading' ? 'Loading the organizer’s published snapshot.' : 'The organizers have not published a valid public snapshot yet. Please check back soon.'}</p>
+      <p>${eventData.status === 'loading' ? 'Loading the latest standings.' : 'We couldn’t load the standings. Please try again shortly.'}</p>
       ${eventData.status === 'loading' ? '' : '<button class="button primary" id="retry-event">Try again</button>'}</section>`);
-    document.querySelector('.preview-strip .strip-inner>span').textContent = 'Cloud Study Jam · Organizer data';
+    document.querySelector('.preview-strip .strip-inner>span').textContent = 'Cloud Study Jam 2026 · ABV-IIITM';
     document.querySelector('.my-link')?.remove();
     const eventFooterNote = document.querySelector('.footer-demo-note');
-    if (eventFooterNote) eventFooterNote.textContent = 'Progress supplied by the event organizers.';
+    if (eventFooterNote) eventFooterNote.textContent = 'Learn together. Keep moving forward.';
     bindEventView(eventData.snapshot);
     document.querySelector('#retry-event')?.addEventListener('click', refreshEvent);
     document.title = 'Study Jam · Campus progress';

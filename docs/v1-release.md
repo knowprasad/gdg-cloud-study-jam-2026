@@ -2,6 +2,8 @@
 
 This is the current release record; it supersedes older status notes in the handoff.
 
+Student-facing polish: technical “Organizer snapshot/data” labels replaced with event identity and “Last updated”; loading/error text now describes standings. The Clubhouse hero and separator are restored on the real-data page, with actual learner count and no invented guild count. Theme now uses neutral Google-style surfaces, blue navigation, yellow actions, green completions and the four-colour GDG signature. Both dark and light palettes are defined; names and row metadata have explicit readable phone sizes. Build and data validation passed; browser visual review remains subject to the tool-access limitation below.
+
 Source commit: `364c6cd`, pushed to GitHub. Verified Pages deployment: https://80c24b41.gdg-cloud-study-jam-2026.pages.dev . Stable production: https://gdg-cloud-study-jam-2026.pages.dev/ .
 
 ## Available
