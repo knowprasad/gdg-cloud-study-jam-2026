@@ -243,6 +243,7 @@ function runRefresh_(retryFailures) {
     try { applyDateFormats_(); } catch (formatError) {}
     try { ensureStatusValidation_(); } catch (validationError) {}
 
+    orderOrganizerTabsV5();
     const logNotes = [retryFailures ? 'Manual retry run' : 'Regular refresh'];
     if (checkSummary.remaining > 0) logNotes.push(checkSummary.remaining + ' profile check(s) not attempted before the time limit');
     if (pendingCount > 0) logNotes.push(pendingCount + ' profile(s) still waiting for a first check');
@@ -2365,4 +2366,13 @@ function applyEventRulesV5() {
     }
   } finally { lock.releaseLock(); }
   runRefresh_(false);
+}
+
+function orderOrganizerTabsV5() {
+ const ss=SpreadsheetApp.getActive();
+ const current=ss.getActiveSheet();
+ const order=['Dashboard','Leaderboard','Group Leaderboard','Groups','Group Members','Follow-up','Form Responses 1','Activity Points','Reward Eligibility','Tracker','Config','Refresh Log','Refill Check'];
+ let position=1;
+ order.forEach(name=>{const sh=ss.getSheetByName(name);if(sh){ss.setActiveSheet(sh);ss.moveActiveSheet(position++);}});
+ if(current)ss.setActiveSheet(current);
 }
