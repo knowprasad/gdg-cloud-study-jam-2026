@@ -37,8 +37,7 @@ export function guildView(snapshot, id) {
   const guild = guilds.find(item => item.id === id);
   if (id && !guild) return '<section class="empty-state"><h1>Guild not found</h1><p>This guild may have been renamed. Choose one from the directory.</p><a href="#guilds" class="button primary">View guilds</a></section>';
   if (guild) {
-    const head = snapshot.participants.find(person => person.id === guild.headId);
-    return `<section class="simple-intro guild-detail-intro"><a class="text-link" href="#guilds">← All guilds</a>${guildCrest(guild)}<h1>${escape(guild.name)}</h1><p>Guild #${guild.rank} · ${guild.members.length} ${guild.members.length === 1 ? 'member' : 'members'}</p><p>Guild head: ${head ? `<a href="#profile/${head.id}">${escape(head.name)}</a>` : 'To be announced'}</p></section>
+    return `<section class="simple-intro guild-detail-intro"><a class="text-link" href="#guilds">← All guilds</a>${guildCrest(guild)}<h1>${escape(guild.name)}</h1><p>Guild #${guild.rank} · ${guild.members.length} ${guild.members.length === 1 ? 'member' : 'members'}</p></section>
       <div class="guild-summary"><div><strong>${guild.average.toFixed(1)}</strong><span>Average points</span></div><div><strong>${guild.active}/${guild.members.length}</strong><span>Started the curriculum</span></div><div><strong>${guild.completed}</strong><span>Completed all ten</span></div></div>
       <section class="standings"><div class="section-heading"><div><h2>Member standings</h2><p>Guild positions share rank when points are equal.</p></div></div><div class="table-header"><span>Place</span><span>Learner</span><span class="badges-column">Badges</span><span>Points</span></div>${memberRows(guild.members) || '<p>No members assigned yet.</p>'}</section>`;
   }
