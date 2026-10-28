@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+.firecrawl/
+.rea/
+
+.env
+.env.*
+!.env.example
+.wrangler/
+# Local handoff, reference captures and machine-specific QA evidence
+CONTEXT.md
+design-previews/
+.impeccable/

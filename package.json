@@ -1,0 +1,8 @@
+{
+  "name": "study-jam-design-previews",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite --host 0.0.0.0", "build": "vite build", "preview": "vite preview --host 0.0.0.0" },
+  "devDependencies": { "vite": "^7.0.0", "@phosphor-icons/core": "^2.1.1" }
+}
