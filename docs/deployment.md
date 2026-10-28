@@ -1,5 +1,9 @@
 # Deployment record
 
+## Latest snapshot release — 28 October 2026
+
+Source commit `364c6cd` was pushed to GitHub and deployed to https://80c24b41.gdg-cloud-study-jam-2026.pages.dev . Production https://gdg-cloud-study-jam-2026.pages.dev/ now defaults to real sanitized snapshot data. Public JSON was verified HTTP 200 with 486 validated participants. See [v1-release.md](v1-release.md) for exclusions, verification limits and manual refresh instructions. The older production details below describe previous releases.
+
 ## Production
 
 - Project: Cloudflare Pages `gdg-cloud-study-jam-2026`, production branch `main`.

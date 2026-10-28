@@ -2,6 +2,8 @@
 
 This is the current release record; it supersedes older status notes in the handoff.
 
+Source commit: `364c6cd`, pushed to GitHub. Verified Pages deployment: https://80c24b41.gdg-cloud-study-jam-2026.pages.dev . Stable production: https://gdg-cloud-study-jam-2026.pages.dev/ .
+
 ## Available
 
 Production defaults to the real organizer snapshot. Demo mode remains explicitly available with `?data=demo`. The snapshot has 486 learners and no assigned guilds. Twelve rows were excluded because the same public learning profile appeared more than once. Source ranks are retained, so gaps are possible. The source workbook was read, not modified.
