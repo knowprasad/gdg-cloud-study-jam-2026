@@ -3,7 +3,7 @@ export async function onRequestGet(context) {
   const { env, request } = context;
   if (env.FEED_ID_KEY) {
     const cache = caches.default;
-    const cacheKey = new Request(new URL('/api/public-feed-cache-v2', request.url));
+    const cacheKey = new Request(new URL('/api/public-feed-cache-v3', request.url));
     const previous = await cache.match(cacheKey);
     if (previous && Date.now() - Date.parse((await previous.clone().json()).updatedAt) < 300000) {
       return Response.json(await previous.json(), { headers: { 'Cache-Control': 'public,max-age=60', 'X-Feed-Status': 'current' } });

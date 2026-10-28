@@ -18,5 +18,5 @@ assert.ok(guildView(snapshot, 'a').includes('&lt;script&gt;'));
 assert.ok(guildView(snapshot, 'b').includes('To be announced'));
 assert.ok(guildView(snapshot, 'missing').includes('Guild not found'));
 assert.ok(personalGuild(snapshot, snapshot.participants[1]).includes('#2 of 2'));
-assert.ok(guildView({ guilds: [], participants: [] }).includes('Guilds are taking shape'));
+assert.ok(guildView({ guilds: [], participants: [] }).includes('No guilds assigned yet'));
 console.log('PASS: zero scores included in averages, shared ranks, singleton, empty guild, participation, escaping, personal guild position.');

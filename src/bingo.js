@@ -86,7 +86,7 @@ export function bingoProgress(person) {
 function taskStatusLabel(status, isSample) {
   if (status === 'complete') return isSample ? 'Example complete' : 'Verified';
   if (status === 'pending') return isSample ? 'Example pending' : 'Awaiting approval';
-  return 'To explore';
+  return 'Not completed';
 }
 
 function taskLinkLabel(id) {
@@ -108,29 +108,24 @@ export function bingoView(person, escape) {
     <section class="cloud-bingo" aria-labelledby="bingo-title">
       <div class="bingo-heading">
         <div>
-          <h2 id="bingo-title">Your cloud bingo.</h2>
-          <p>Nine steps. One campus adventure.</p>
+          <h2 id="bingo-title">Cloud Bingo</h2>
+          <p>Complete nine tasks for 5 bonus points. Tap a tile for instructions.</p>
         </div>
         <strong>${progress.count}<small> / ${bingoTasks.length}</small></strong>
       </div>
       <progress max="${bingoTasks.length}" value="${progress.count}" aria-label="Bingo completion"></progress>
       <div class="bingo-grid">
         ${progress.tasks.map((task, index) => `
-          <details class="bingo-square ${task.status}">
-            <summary>
+          <button type="button" class="bingo-square ${task.status}" data-bingo-task="${task.id}" aria-haspopup="dialog">
               <span class="bingo-mark" aria-hidden="true">${task.status === 'complete' ? '✓' : String(index + 1).padStart(2, '0')}</span>
               <strong>${task.title}</strong>
               <span class="bingo-status">${taskStatusLabel(task.status, progress.isSample)}</span>
-            </summary>
-            <p>${task.detail}</p>
-            ${task.url ? `<a href="${task.url}" target="_blank" rel="noopener noreferrer">${taskLinkLabel(task.id)} ↗</a>` : ''}
-            ${task.instagramUrl ? `<a href="${task.instagramUrl}" target="_blank" rel="noopener noreferrer">Follow & DM @gdg_oncampus_iiitm ↗</a>` : ''}
-          </details>
+          </button>
         `).join('')}
       </div>
       <div class="bingo-reward">
         <div>
-          <h3>${progress.complete ? 'Cloud Bingo complete!' : 'The final piece is yours.'}</h3>
+          <h3>${progress.complete ? 'Bingo complete · +5 points' : `${bingoTasks.length - progress.count} tasks left`}</h3>
           <p>${progress.complete
             ? 'Your one-time 5-point bonus is included in your total.'
             : 'Complete all nine verified squares to earn 5 bonus points and unlock your share card.'}</p>
@@ -138,6 +133,10 @@ export function bingoView(person, escape) {
         <button class="button primary" data-bingo-download ${progress.complete ? '' : 'disabled'}>Download completion card</button>
         <button class="text-button" data-bingo-caption ${progress.complete ? '' : 'disabled'}>Copy caption</button>
       </div>
+      <dialog id="bingo-task-dialog" class="bingo-task-dialog" aria-labelledby="bingo-task-title">
+        <div class="dialog-header"><h2 id="bingo-task-title"></h2><button type="button" class="icon-button" data-close-bingo aria-label="Close task instructions"><img src="/icons/x.svg" alt="" width="22" height="22"></button></div>
+        <p id="bingo-task-status"></p><div id="bingo-task-instructions"></div>
+      </dialog>
       <div class="milestone-ribbon" aria-label="Personal milestones">
         ${milestones.map(([label, earned]) => `
           <span class="${earned ? 'earned' : ''}">${earned ? '✓' : '○'} ${label}</span>
@@ -148,6 +147,39 @@ export function bingoView(person, escape) {
         : 'Organizer approval is required for manual activities. Opening a link does not award points.'}</p>
     </section>
   `;
+}
+
+export function bindBingoTasks(person) {
+  const dialog = document.querySelector('#bingo-task-dialog');
+  if (!dialog) return;
+  const progress = bingoProgress(person);
+  let trigger = null;
+  document.querySelectorAll('[data-bingo-task]').forEach(button => button.addEventListener('click', () => {
+    const task = progress.tasks.find(item => item.id === button.dataset.bingoTask);
+    if (!task) return;
+    trigger = button;
+    dialog.querySelector('#bingo-task-title').textContent = task.title;
+    dialog.querySelector('#bingo-task-status').textContent = taskStatusLabel(task.status, progress.isSample);
+    const instructions = dialog.querySelector('#bingo-task-instructions');
+    instructions.replaceChildren();
+    const detail = document.createElement('p');
+    detail.textContent = task.detail;
+    instructions.append(detail);
+    for (const [url, label] of [[task.url, taskLinkLabel(task.id)], [task.instagramUrl, 'Open Instagram: @gdg_oncampus_iiitm']]) {
+      if (!url) continue;
+      const link = document.createElement('a');
+      link.href = url; link.textContent = `${label} ↗`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.className = 'button secondary';
+      instructions.append(link);
+    }
+    dialog.showModal();
+  }));
+  dialog.querySelector('[data-close-bingo]').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const rect = dialog.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+  });
+  dialog.addEventListener('close', () => trigger?.focus({ preventScroll: true }));
 }
 
 function drawWrappedText(context, text, x, y, maxWidth, lineHeight) {

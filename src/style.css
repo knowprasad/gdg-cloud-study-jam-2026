@@ -376,3 +376,15 @@ body{overflow-x:clip}
 .guild-detail-intro>.guild-crest{display:flex;margin-top:28px}.guild-tile progress{width:100%;accent-color:var(--achievement)}
 .personal-guild{display:flex;gap:24px;align-items:center;margin:36px 0;padding-block:28px;border-block:1px solid var(--line)}.personal-guild .guild-crest{margin:0}.personal-guild p{margin:10px 0;font-size:16px}
 @media(max-width:600px){.guild-summary{gap:12px}.guild-summary strong{font-size:25px}.guild-summary span{font-size:13px}.personal-guild{gap:16px;align-items:flex-start}.guild-grid{grid-template-columns:1fr}.guild-tile p{font-size:15px}.guild-tile-bottom{font-size:13px}.guild-members{font-size:14px}}
+.bingo-grid>button.bingo-square{display:flex;flex-direction:column;gap:12px;padding:20px;min-height:168px;text-align:left;width:100%;transition:border-color .18s,background-color .18s}
+.bingo-grid>button.bingo-square:hover{border-color:var(--accent)}
+.bingo-grid>button .bingo-status{margin-top:auto}
+.bingo-task-dialog{position:fixed;inset:0;margin:auto;width:min(520px,calc(100% - 32px));max-height:calc(100dvh - 48px);overflow:auto;padding:28px;border-radius:16px}
+.bingo-task-dialog::backdrop{background:rgba(12,17,24,.65)}
+.bingo-task-dialog .dialog-header{align-items:flex-start;gap:16px}.bingo-task-dialog h2{font-size:25px;line-height:1.35}.bingo-task-dialog .icon-button{flex-shrink:0}
+#bingo-task-status{font-size:14px;color:var(--accent);margin:0 0 16px}
+#bingo-task-instructions>p{font-size:16px;line-height:1.75;margin:0 0 24px}
+#bingo-task-instructions>a{display:flex;white-space:normal;min-height:48px;margin-top:12px;text-align:center;font-size:15px}
+body:has(.bingo-task-dialog[open]){overflow:hidden}
+@media(prefers-reduced-motion:no-preference){.bingo-task-dialog[open]{animation:bingo-dialog-in .18s ease-out}@keyframes bingo-dialog-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}}
+@media(max-width:600px){.bingo-grid>button.bingo-square{padding:12px;min-height:150px;gap:10px}.bingo-grid>button.bingo-square strong{font-size:14px;line-height:1.5}.bingo-task-dialog{padding:22px}.bingo-task-dialog h2{font-size:23px}}
