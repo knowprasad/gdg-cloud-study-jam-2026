@@ -46,5 +46,9 @@ export async function liveSnapshot(secret) {
     }
     if (groupRow?.[2]?.trim()) guild.name = groupRow[2].trim();
   }
-  return validateSnapshot({ schemaVersion: 1, rulesVersion: '2026-10-28', updatedAt: source.fetchedAt, participants, guilds });
+  const configResponse = await fetch('https://docs.google.com/spreadsheets/d/1sTn7Q6VVqkKHFo2ZEDrnNVnwe0gk8j22knsj8D1Ss6c/gviz/tq?tqx=out:csv&headers=1&range=F5%3AH6&sheet=Config', { signal: AbortSignal.timeout(15000) });
+  if (!configResponse.ok) throw new Error('Scoring settings unavailable');
+  const configRows = parseCsv(await configResponse.text());
+  const xpRule = { perPoint: Number(configRows.find(row => row[0] === 'Experience points per 1 score point')?.[1]), cap: Number(configRows.find(row => row[0] === 'Experience score cap')?.[1]) };
+  return validateSnapshot({ schemaVersion: 1, rulesVersion: 'V9', xpRule, updatedAt: source.fetchedAt, participants, guilds });
 }

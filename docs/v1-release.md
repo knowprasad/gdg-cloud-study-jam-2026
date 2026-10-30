@@ -2,6 +2,8 @@
 
 This is the current release record; it supersedes older status notes in the handoff.
 
+30 October V9 rules alignment: user supplied the updated script. XP now scores absolute total profile XP divided by Config's divisor, capped by Config, independent of account age and without a baseline. Attachment defaults are divisor 30/cap 30; the live Config inspected during implementation was divisor 100/cap 30. API now includes validated `xpRule` settings and V9 version; public rules consume these rather than claiming display-only XP or hardcoding the attachment defaults. Scores continue to come from the Sheet unchanged. Live read, validation and build passed.
+
 30 October refresh repair: the source rounds components and totals separately, producing 0.1-point differences in three profiles. Validation now tolerates up to 0.11 while still rejecting larger mismatches; published scores/ranks remain unchanged. Live read, validation regression and build passed. Source currently has non-zero scored XP despite the public rules saying display-only; this is a separate unresolved rules discrepancy. No Sheet data changed.
 
 Guild display decision: guild names remain visible. Guild-head sections are hidden for every guild, including those with a resolved head, at the user's request for consistent presentation.

@@ -186,7 +186,7 @@ function render() {
   if (r === 'home' || r.startsWith('profile/')) home();
   else if (r === 'guilds' || r.startsWith('guild/')) guildPage();
   else if (r === 'badges') badgesPage();
-  else if (r === 'rules') shell(eventMode ? scoringPage(courses, escape).replace('Rules adopted 28 Oct 2026 · Preview data', 'Event scoring rules · 2026') : scoringPage(courses, escape));
+  else if (r === 'rules') shell(eventMode ? scoringPage(courses, escape, eventData.snapshot?.xpRule).replace('Rules adopted 28 Oct 2026 · Preview data', 'Event scoring rules · V9') : scoringPage(courses, escape));
   else if (r === 'references') references();
   else leaderboard();
   document.title = `${r === 'rules' ? 'Scoring rules' : r === 'home' ? 'My progress' : r === 'badges' ? 'Badges' : r.startsWith('guild') ? 'Guilds' : 'Leaderboard'} · ${designs[design].name} · Study Jam`;

@@ -11,7 +11,11 @@ function fields(record, allowed) {
 }
 
 export function validateSnapshot(input) {
-  fields(input, ['schemaVersion', 'rulesVersion', 'updatedAt', 'participants', 'guilds']);
+  fields(input, ['schemaVersion', 'rulesVersion', 'updatedAt', 'participants', 'guilds', 'xpRule']);
+  if (input.xpRule !== undefined) {
+    fields(input.xpRule, ['perPoint', 'cap']);
+    if (!finite(input.xpRule.perPoint) || input.xpRule.perPoint === 0 || !finite(input.xpRule.cap)) throw new Error('Invalid XP settings');
+  }
   if (input.schemaVersion !== 1 || typeof input.rulesVersion !== 'string' ||
       !timestamp(input.updatedAt) || !Array.isArray(input.participants) ||
       !input.participants.length || !Array.isArray(input.guilds)) {

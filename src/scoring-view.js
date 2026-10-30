@@ -1,6 +1,6 @@
 import { scoringRules as rules } from './scoring.js';
 
-export function scoringPage(courses, escape) {
+export function scoringPage(courses, escape, xpRule = null) {
   return `<section class="simple-intro rules-intro"><h1>Know your points.</h1><p>Complete the curriculum, build a learning habit and join your campus sessions. Every point has a reason.</p><span class="sample-label">Rules adopted 28 Oct 2026 · Preview data</span></section>
   <div class="rules-layout"><section class="rules-content" aria-labelledby="score-rules-title"><h2 id="score-rules-title">How your score adds up</h2>
     <dl class="rules-list">
@@ -8,7 +8,7 @@ export function scoringPage(courses, escape) {
       <div><dt>Your best badge streak <span>Up to 7 points</span></dt><dd>Earn 1 point per day in your longest consecutive run of curriculum-badge days. Multiple badges on one day count as one streak day. A broken streak does not remove your best-streak bonus.</dd></div>
       <div><dt>Finish all ten early <span>Up to 15 points</span></dt><dd>Complete every curriculum badge to unlock this bonus. It decreases evenly from 15 at the event start to 0 on 22 November, using your final badge date. Finishing a subset does not earn this bonus.</dd></div>
       <div><dt>Verified session attendance <span>2 per session · 10 maximum</span></dt><dd>Organizers record attendance for each distinct session. The same session counts once, even if your attendance is entered twice. Story-card posting and GDG membership are separate approved activities, worth 2 points each. No referral points.</dd></div>
-      <div><dt>Google Skills XP <span>Display only · 0 score points</span></dt><dd>Your lifetime XP is separate from this event. It does not increase your score or break a tie.</dd></div>
+      <div><dt>Google Skills XP <span>${xpRule ? `1 point per ${xpRule.perPoint} XP · maximum ${xpRule.cap} points` : 'See the current scoring settings'}</span></dt><dd>${xpRule ? `Your total profile XP is divided by ${xpRule.perPoint}, capped at ${xpRule.cap} score points. XP earned before this event counts too, regardless of account age. No starting baseline is subtracted. The final score is rounded to one decimal place.` : 'XP contributes to your score under the current Sheet settings. Check your profile for the published XP score.'}</dd></div>
     </dl>
     <h2>Bingo & community activities</h2><p>Organizer-approved story-card posting and community membership each earn 2 points once. Complete all nine verified Bingo squares for a one-time 5-point bonus. Badge and session squares do not duplicate existing points. Rows and columns earn no extra points; sharing the completed card is optional and earns no extra points.</p><h2>Points for each badge</h2><ul class="badge-values">${courses.map(c => `<li><a href="${c.url}" target="_blank" rel="noopener noreferrer">${escape(c.title)}</a><strong>${Math.max(rules.badgeMinimum, c.credits)}<span class="sr-only"> points</span></strong></li>`).join('')}</ul>
     <details class="rule-calculation"><summary>The early-finish calculation</summary><p>15 × (days from your last curriculum badge to 22 November) ÷ (days from 14 September to 22 November). Scores are rounded to one decimal place.</p></details>
@@ -16,7 +16,7 @@ export function scoringPage(courses, escape) {
     <section><h2>Guilds & ties</h2><p>Your guild score is the average member score across its fixed eligible roster, including members on zero points. Participation is shown separately. Equal scores share a rank; alphabetical order only arranges tied names.</p></section>
     <section><h2>If an update fails</h2><p>A temporary profile-fetch problem should retain the last verified result and show an update delay. Organizers verify final results after the event closes. An empty or failed scrape is not proof that a badge was lost.</p></section>
     <section><h2>Rewards are separate</h2><p>The curriculum milestones are 5 and 10 badges. Score rank does not itself confirm reward approval or collection. Organizer competition prizes have not been announced here.</p></section>
-    <section class="rules-preview-note"><h2>About this preview</h2><p>The rules are chosen, but the website is not connected to the organizer Sheet yet. Learners, scores and attendance shown here are synthetic examples.</p></section>
+    <section class="rules-preview-note"><h2>Score updates</h2><p>Profile scores come from the event tracker. Component values and the total are rounded separately, so they may differ by 0.1 point when added.</p></section>
   </aside></div>`;
 }
 
