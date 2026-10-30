@@ -40,7 +40,8 @@ export function validateSnapshot(input) {
     ids.add(person.id);
     fields(person.scoreBreakdown, components);
     if (!components.every(key => finite(person.scoreBreakdown[key])) ||
-        Math.abs(components.reduce((sum, key) => sum + person.scoreBreakdown[key], 0) - person.points) > 0.051) {
+        // Source reports round individual bonuses and the final total separately.
+        Math.abs(components.reduce((sum, key) => sum + person.scoreBreakdown[key], 0) - person.points) > 0.11) {
       throw new Error('Score components do not reconcile.');
     }
   }

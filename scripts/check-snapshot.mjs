@@ -19,6 +19,11 @@ for (const field of ['roll', 'email', 'privateNote', 'profileId']) {
 const inconsistent = structuredClone(sample);
 inconsistent.participants[0].points = 99;
 assert.throws(() => validateSnapshot(inconsistent));
+const rounded = structuredClone(sample);
+rounded.participants[0].points = 4.1;
+assert.doesNotThrow(() => validateSnapshot(rounded));
+rounded.participants[0].points = 4.2;
+assert.throws(() => validateSnapshot(rounded));
 assert.equal((await onRequestGet({ env: {} })).status, 503);
 const response = await onRequestGet({ env: { PUBLIC_LEADERBOARD_SNAPSHOT: JSON.stringify(sample) } });
 assert.equal(response.status, 200);
