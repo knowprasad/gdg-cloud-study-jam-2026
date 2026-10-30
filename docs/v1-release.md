@@ -2,6 +2,8 @@
 
 This is the current release record; it supersedes older status notes in the handoff.
 
+30 October refresh repair: the source rounds components and totals separately, producing 0.1-point differences in three profiles. Validation now tolerates up to 0.11 while still rejecting larger mismatches; published scores/ranks remain unchanged. Live read, validation regression and build passed. Source currently has non-zero scored XP despite the public rules saying display-only; this is a separate unresolved rules discrepancy. No Sheet data changed.
+
 Guild display decision: guild names remain visible. Guild-head sections are hidden for every guild, including those with a resolved head, at the user's request for consistent presentation.
 
 Latest UX pass: Bingo tiles are fixed buttons opening a centred native dialog, with close/Escape/backdrop dismissal and focus restoration. Grid stays in place on mobile. Removed generic “campus adventure,” “next level,” “a little further together,” and similar slogans from primary student routes in favor of event, task and progress labels. Live guild names now read Groups column C (“Guild name”); numeric column A remains the assignment key. Guild heads resolve from a unique name or a roll entry matched privately against Tracker, publishing only the public member ID. Build, guild/snapshot checks and live read passed; browser control still reports disabled, so rendered modal acceptance remains unverified.
