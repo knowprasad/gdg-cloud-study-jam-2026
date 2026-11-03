@@ -1,9 +1,25 @@
-# Rules update — 28 October 2026
+# Rules update — 3 November 2026
 
-Adopted rules are displayed at `/#rules`: badge credits with minimum4, curriculum best streak capped7, early finish capped15, attendance2 per dated session capped10, XP display-only, shared score ties, guild average across assigned roster. Profiles expose component totals and completed-badge details. Synthetic data now reconciles to these rules; no live student data is published.
+## Active settings and ranking hierarchy
 
-Installed Code.gs, Group.gs and Scoring.gs in the bound organizer project. Ran applyEventRulesV5 after user completed Google authorization. Created five hidden organizer backup tabs; set Config G3:G10 to4,1,30,0,0,1,7,15; updated XP notes; removed unused dummy activities; renamed attendance configuration headers. Added Last successful check to Tracker. Inclusive cutoff, cached verified evidence on failures, safe refresh failure reporting, zero-profile inclusion and numeric XP formatting are implemented.
+1. **Ranking Hierarchy (V10):**
+   * Primary: Most curriculum badges completed (finishing all 10 badges guarantees placement in the top tier).
+   * Secondary: Most Cloud Bingo milestones complete (out of 9 squares).
+   * Tertiary: Most lifetime raw Google Skills XP on the profile.
+   * Ties: Equal across all three share the rank.
 
-First refresh failed on typed-column formatting; guarded formatting was repaired and the next run completed SUCCESS. Export reconciliation verified: raw Form Responses1 unchanged, manual Tracker columns unchanged,493 profiles ranked, all XP score components0, totals reconcile, numeric XP format fixed, no cached formula errors. No guild names, heads, attendance records or registration deadlines invented/changed.
+2. **Badge Weightage:**
+   * Badge minimum confirmed at **4 points**.
+   * Badge credit multiplier: 1 point per credit.
+   * Total curriculum badge points available: **69 points** ($4 + 4 + 4 + 4 + 12 + 13 + 4 + 4 + 4 + 16$).
 
-Checks: node scripts/verify-scoring.mjs; npm run build; node scripts/check-production.mjs; node scripts/check-scoring-ui.mjs. Browser ledger/rules checked320/390/1440 in both themes, zero profile and route navigation. Real website data integration remains pending.
+3. **Event Points (Informational & Guild Currency):**
+   * Total event points are retained and displayed to reward comprehensive activity: badge credits (up to 69), daily streaks (up to 7), early finish (up to 15), verified session attendance (10/session, max 20), and community Bingo tasks (story card 20, GDG community 20).
+   * Guild standings continue to use average member event score across the roster.
+
+## Website changes
+
+* The rules page (`#rules`) displays the prominent "How Leaderboard Ranking Works" 3-tier guide alongside the 69-point badge scale.
+* Profile views have removed the obsolete `"X points to move ahead"` message and now guide learners based on badges, Bingo squares, and XP.
+* The API adapter supports reading through column W (`A4:W`) for `'Bingo squares complete (of 9)'`.
+* Tests (`scripts/verify-scoring.mjs` and `scripts/check-snapshot.mjs`) and production build verified.

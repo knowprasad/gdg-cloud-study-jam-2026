@@ -11,10 +11,18 @@ function fields(record, allowed) {
 }
 
 export function validateSnapshot(input) {
-  fields(input, ['schemaVersion', 'rulesVersion', 'updatedAt', 'participants', 'guilds', 'xpRule']);
+  fields(input, ['schemaVersion', 'rulesVersion', 'updatedAt', 'participants', 'guilds', 'xpRule', 'streakRule']);
   if (input.xpRule !== undefined) {
-    fields(input.xpRule, ['perPoint', 'cap']);
-    if (!finite(input.xpRule.perPoint) || input.xpRule.perPoint === 0 || !finite(input.xpRule.cap)) throw new Error('Invalid XP settings');
+    fields(input.xpRule, ['perPoint', 'cap', 'pending']);
+    if (!finite(input.xpRule.perPoint) || input.xpRule.perPoint === 0 ||
+        (input.xpRule.cap !== null && !finite(input.xpRule.cap)) ||
+        (input.xpRule.pending !== undefined && typeof input.xpRule.pending !== 'boolean')) throw new Error('Invalid XP settings');
+  }
+  if (input.streakRule !== undefined) {
+    fields(input.streakRule, ['pointsPerDay', 'cap', 'pending']);
+    if (!finite(input.streakRule.pointsPerDay) || input.streakRule.pointsPerDay === 0 ||
+        (input.streakRule.cap !== null && !finite(input.streakRule.cap)) ||
+        (input.streakRule.pending !== undefined && typeof input.streakRule.pending !== 'boolean')) throw new Error('Invalid streak settings');
   }
   if (input.schemaVersion !== 1 || typeof input.rulesVersion !== 'string' ||
       !timestamp(input.updatedAt) || !Array.isArray(input.participants) ||

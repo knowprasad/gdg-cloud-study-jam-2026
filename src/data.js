@@ -46,16 +46,16 @@ participants.forEach((p, index) => {
   const completions = courses.slice(0, p.badges).map((c, i) => ({ id: c.id,
     date: new Date(Date.UTC(2026, 9, 20 - Math.max(0, run - 1) + Math.min(i, Math.max(0, run - 1)))).toISOString().slice(0, 10) }));
   const attendance = Array.from({length: p.badges ? index % 4 : 0}, (_, i) => ({id: `demo-session-${i + 1}`, date: `2026-10-${String(12 + i).padStart(2, '0')}`}));
-  p.scoreBreakdown = scoreProgress(completions, attendance, courses);
+  p.lifetimeXp = p.badges * 100;
+  p.scoreBreakdown = scoreProgress(completions, attendance, courses, p.lifetimeXp);
   p.points = p.scoreBreakdown.total; p.bestStreak = p.scoreBreakdown.bestStreak;
   p.currentStreak = 0; // The mock snapshot is 28 Oct; evidence ends on 20 Oct.
-  p.lifetimeXp = p.badges * 100;
 });
 participants.forEach((p,i)=>{
  p.approvedActivities=p.id==='demo-1'?['credits','kickoff','story','second-session','community']:p.badges?['credits',...(i%3===0?['kickoff']:[]),...(i%4===0?['community']:[])]:[];
  p.pendingActivities=p.id==='demo-5'?['story']:[];
  const verifiedSessions=['kickoff','second-session'].filter(id=>p.approvedActivities.includes(id)).length;
- p.scoreBreakdown.total-=p.scoreBreakdown.attendance;p.scoreBreakdown.sessions=verifiedSessions;p.scoreBreakdown.attendance=verifiedSessions*2;p.scoreBreakdown.total+=p.scoreBreakdown.attendance;
+ p.scoreBreakdown.total-=p.scoreBreakdown.attendance;p.scoreBreakdown.sessions=verifiedSessions;p.scoreBreakdown.attendance=verifiedSessions*10;p.scoreBreakdown.total+=p.scoreBreakdown.attendance;
  const b=bingoProgress(p);p.scoreBreakdown.activities=b.activityPoints;p.scoreBreakdown.bingo=b.bonus;
  p.scoreBreakdown.total=Math.round((p.scoreBreakdown.total+b.activityPoints+b.bonus)*10)/10;p.points=p.scoreBreakdown.total;
 });

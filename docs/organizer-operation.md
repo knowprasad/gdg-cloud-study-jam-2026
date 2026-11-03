@@ -12,6 +12,8 @@ In Groups, the head entry must match a public member name exactly and belong to 
 
 Continue the existing organizer approval workflow in the Sheet. Exported Bingo Progress entries supply the approved milestones. Merely clicking a course, community or story link never awards points. A student's completed Bingo download unlocks only when all nine tasks are complete in the exported evidence.
 
+Requested weights: approve `story` and `community` once each for 20 points. Configure every eligible session at 10 points and enter each attendee once; attendance totals cap at 20. This makes session squares 4 and 7 worth 10 each. Full Bingo remains +5. The student-facing rules page is deployed, but the bound Apps Script still uses old scoring weights and defaults a blank XP cap to 30. Update the scoring source, change session values to 10, leave the XP cap blank for no cap, and run **GCLC Tracker → Refresh now** to activate the rules.
+
 ## Publish changes
 
 **Automatic refresh is now active.** Sheet report changes are read by the website API with a five-minute cache, and visible open pages recheck every five minutes. You no longer need to redeploy for ordinary score/guild changes. Your Sheet's own Apps Script refresh still needs to update the reports first. The manual export commands below remain a recovery/deployment procedure.

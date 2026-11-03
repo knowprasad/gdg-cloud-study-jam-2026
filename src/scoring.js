@@ -1,8 +1,9 @@
 // Rules version shared by the preview adapter and the public explanation.
 // Real participants will receive these calculated fields from the organizer pipeline.
 export const scoringRules = Object.freeze({
-  version: '2026-10-28', start: '2026-09-14', end: '2026-11-22',
-  badgeMinimum: 4, streakCap: 7, earlyCap: 15, attendancePerSession: 2, attendanceCap: 10,
+  version: '2026-11-03-v10', start: '2026-09-14', end: '2026-11-22',
+  badgeMinimum: 4, streakPointsPerDay: 1, streakCap: 7, earlyCap: 15, attendancePerSession: 10, attendanceCap: 20,
+  xpPerPoint: 100, xpCap: null, bingoStoryPoints: 20, bingoCommunityPoints: 20, bingoCompletionBonus: 5,
 });
 const dayMs = 86400000;
 const round = n => Math.round(n * 10) / 10;
@@ -10,7 +11,7 @@ const validDay = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) &&
   Number.isFinite(Date.parse(s)) && new Date(s).toISOString().slice(0, 10) === s;
 const eligible = s => validDay(s) && s >= scoringRules.start && s <= scoringRules.end;
 
-export function scoreProgress(completions, attendance, courses) {
+export function scoreProgress(completions, attendance, courses, lifetimeXp = 0) {
   const known = new Map(courses.map(c => [c.id, c]));
   const earned = new Map();
   for (const b of completions) {
@@ -29,19 +30,34 @@ export function scoreProgress(completions, attendance, courses) {
   const earlyFinish = known.size > 0 && earned.size === known.size ? round(scoringRules.earlyCap *
     Math.max(0, Math.min(1, (Date.parse(scoringRules.end) - Date.parse(last)) / (Date.parse(scoringRules.end) - Date.parse(scoringRules.start))))) : 0;
   const breakdown = { badges: badgeDetails.reduce((n, b) => n + b.points, 0), streak: Math.min(bestStreak, scoringRules.streakCap),
-    earlyFinish, attendance: Math.min(scoringRules.attendanceCap, sessions.size * scoringRules.attendancePerSession), xp: 0 };
-  return { ...breakdown, total: round(breakdown.badges + breakdown.streak + breakdown.earlyFinish + breakdown.attendance),
+    earlyFinish, attendance: Math.min(scoringRules.attendanceCap, sessions.size * scoringRules.attendancePerSession),
+    xp: scoringRules.xpCap === null ? Math.max(0, Number(lifetimeXp) || 0) / scoringRules.xpPerPoint :
+      Math.min(scoringRules.xpCap, Math.max(0, Number(lifetimeXp) || 0) / scoringRules.xpPerPoint) };
+  return { ...breakdown, total: round(breakdown.badges + breakdown.streak + breakdown.earlyFinish + breakdown.attendance + breakdown.xp),
     badgeDetails, bestStreak, sessions: sessions.size, completedAt: earned.size === known.size ? last : null };
 }
 
+// V10 ranking order: 1) Most curriculum badges, 2) Most Bingo squares, 3) Raw lifetime XP on profile.
+// Event score points are displayed for information, but rank follows this competitive milestone hierarchy.
 export function rankParticipants(people) {
-  people.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
-  let rank = 0, previous;
+  people.sort((a, b) => 
+    (b.badges - a.badges) ||
+    ((b.approvedActivities?.length ?? 0) - (a.approvedActivities?.length ?? 0)) ||
+    ((b.lifetimeXp ?? 0) - (a.lifetimeXp ?? 0)) ||
+    (b.points - a.points) ||
+    a.name.localeCompare(b.name)
+  );
+  let rank = 0, previous = null;
   people.forEach((p, i) => {
-    if (p.points !== previous) rank = i + 1;
-    p.rank = rank; previous = p.points;
-    const nextScore = i ? people.slice(0, i).findLast(x => x.points > p.points)?.points : null;
-    p.nextRankGap = nextScore === null || nextScore === undefined ? null : round(nextScore - p.points + 0.1);
+    const same = previous &&
+      previous.badges === p.badges &&
+      (previous.approvedActivities?.length ?? 0) === (p.approvedActivities?.length ?? 0) &&
+      (previous.lifetimeXp ?? 0) === (p.lifetimeXp ?? 0);
+    if (!same) rank = i + 1;
+    p.rank = rank;
+    previous = p;
+    const nextPerson = i ? people.slice(0, i).findLast(x => x.rank < p.rank) : null;
+    p.nextRankGap = nextPerson ? round(Math.max(0.1, nextPerson.points - p.points + 0.1)) : null;
   });
   return people;
 }

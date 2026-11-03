@@ -12,7 +12,8 @@ const labels = {
 
 export function eventView(snapshot, status, hash) {
   const guildName = id => snapshot.guilds.find(guild => guild.id === id)?.name || 'Guild not assigned';
-  const people = [...snapshot.participants].sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name));
+  // The source leaderboard already encodes rank and tie order. Preserve it.
+  const people = [...snapshot.participants];
   let remembered = null;
   try { remembered = localStorage.getItem('study-jam-event-person'); } catch { /* Optional storage. */ }
   const profile = people.find(person => `profile/${person.id}` === hash || (hash === 'home' && person.id === remembered));
@@ -31,16 +32,28 @@ export function eventView(snapshot, status, hash) {
   if (hash === 'badges') return `${intro}<section class="simple-intro"><h1>The badge list</h1><p>Ten curriculum badges. Each eligible completion counts once.</p></section><div class="catalog-grid">${courses.map(course => `<article class="course-tile"><span class="category">${escape(course.category)}</span><h2>${escape(course.title)}</h2><p>${Math.max(4, course.credits)} event points</p><a class="text-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Open Google Skills ↗</a></article>`).join('')}</div>`;
   if (hash === 'fame') return `${intro}<section class="simple-intro"><h1>Hall of Fame</h1><p>Weekly recognition from the organizing team.</p></section><section class="empty-state"><h2>No awards announced yet.</h2><p>Weekly MVP and top-guild awards will appear once organizers announce them.</p><a class="button primary" href="#leaderboard">Explore the standings</a></section>`;
   if (profile) {
-    const next = [...people].reverse().find(person => person.points > profile.points);
+    const profileIndex = people.indexOf(profile);
+    const ahead = profileIndex > 0 ? people.slice(0, profileIndex).findLast(person => person.rank < profile.rank) : null;
+    const xpRule = snapshot.xpRule;
+    const streakRule = snapshot.streakRule;
+    const streakCap = streakRule?.cap == null ? 'no cap' : `maximum ${streakRule.cap} points`;
+    const xpLimit = xpRule?.cap == null ? 'no cap' : `maximum ${xpRule.cap} points`;
     const bingoPerson = { ...profile, synthetic: false, badges: profile.badgesCompleted, scoreBreakdown: { ...profile.scoreBreakdown, badgeDetails: profile.badgeDetails || [] } };
     return `${intro}<section class="simple-intro"><a href="#leaderboard" class="text-link">← Back to standings</a>
-      <h1>${escape(profile.name)}</h1><p>#${profile.rank} · ${profile.points.toFixed(1)} points · ${escape(guildName(profile.guildId))}</p><button class="button secondary" data-remember-event="${profile.id}">Remember my profile</button>
-      <p>${next ? `${(next.points - profile.points + 0.1).toFixed(1)} points to move ahead of ${escape(next.name)}.` : 'You share the highest score. Keep learning.'}</p></section>
+      <h1>${escape(profile.name)}</h1><p>#${profile.rank} · ${profile.badgesCompleted}/10 badges · ${profile.approvedActivities?.length ?? 0}/9 Bingo · ${profile.points.toFixed(1)} points · ${escape(guildName(profile.guildId))}</p><button class="button secondary" data-remember-event="${profile.id}">Remember my profile</button>
+      <p>${ahead ? `Rank is ordered by Badges (1st), Bingo squares (2nd), and Profile XP (3rd). Complete more badges and Bingo milestones to climb above ${escape(ahead.name)}.` : 'You hold the top rank! Keep learning.'}</p></section>
       <section class="score-breakdown"><h2>Where the points came from</h2><dl class="score-ledger">
-        ${Object.entries(labels).map(([key, label]) => `<div><dt>${label}</dt><dd>${profile.scoreBreakdown[key].toFixed(1)}</dd></div>`).join('')}
+        ${Object.entries(labels).map(([key, label]) => {
+          const note = key === 'streak' ? `${streakRule?.pointsPerDay ?? 1} point per consecutive badge day · ${streakCap}`
+            : key === 'xp' ? `1 point per ${xpRule?.perPoint ?? 100} total XP · ${xpLimit}`
+              : key === 'attendance' ? '10 points per verified session · maximum 20 points'
+                : key === 'activities' ? '20 points per approved story or GDG membership task'
+                  : key === 'bingo' ? '5 points for all nine verified squares' : '';
+          return `<div><dt>${label}${note ? `<small>${escape(note)}</small>` : ''}</dt><dd>${profile.scoreBreakdown[key].toFixed(1)}</dd></div>`;
+        }).join('')}
         <div class="score-ledger-total"><dt>Total event points</dt><dd>${profile.points.toFixed(1)}</dd></div></dl>
-        <p>${profile.badgesCompleted} of 10 curriculum badges completed.</p><a href="#rules" class="text-link">How scoring works →</a>
-        <p>Best badge streak: ${profile.bestStreak ?? 'Not supplied'} days.</p></section>
+        <p>${profile.badgesCompleted} of 10 curriculum badges completed.</p><a href="#rules" class="text-link">How ranking & points work →</a>
+        <p>Best badge streak: ${profile.bestStreak ?? 'Not supplied'} days.</p>${xpRule?.pending ? '<p class="input-help">Published XP scores are being refreshed to match the current cap.</p>' : ''}${streakRule?.pending ? '<p class="input-help">Published streak scores are being refreshed to match the current rule.</p>' : ''}</section>
         ${profile.badgeDetails ? `<section class="score-breakdown"><h2>Your completed badges</h2><ul class="badge-values">${profile.badgeDetails.map(badge => `<li><span>${escape(courses.find(course => course.id === badge.id)?.title || badge.id)}<small>${escape(badge.date)}</small></span><strong>+${badge.points}</strong></li>`).join('')}</ul></section>` : ''}
         ${personalGuild(snapshot, profile)}
         ${profile.badgeDetails ? bingoView(bingoPerson, escape) : '<p>Detailed badge and Bingo evidence has not been published yet.</p>'}`;
@@ -50,11 +63,11 @@ export function eventView(snapshot, status, hash) {
     <div class="intro-copy"><div class="club-event"><img src="/assets/google-cloud-logo.svg" alt="Google Cloud" width="123" height="20"><span>Study Jam 2026</span></div>
       <h1>Cloud Study Jam<br><span>ABV-IIITM</span><span class="headline-dot" aria-hidden="true"></span></h1>
       <p>A Cloud Study Jam for ABV-IIITM students.<br>Track your badges, points and guild standings.</p>
-      <div class="hero-actions"><button class="button primary" data-event-find>Find my place ↗</button><a class="text-link" href="#rules">How to earn points →</a></div>
+      <div class="hero-actions"><button class="button primary" data-event-find>Find my place ↗</button><a class="text-link" href="#rules">How ranking & points work →</a></div>
       <div class="club-community"><span>${people.length} learners</span><span>10 skill badges</span><span>Until 22 Nov</span></div>
     </div><div class="intro-feature"><div class="member-ticket">
       <div class="ticket-colorline" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="ticket-top"><span>Your campus learning club</span><span>2026</span></div>
-      <div class="event-pass"><img src="/assets/gdg-gwalior-badge.webp" alt="GDG on Campus ABV-IIITM Gwalior" width="100" height="100"><h2>10 badges.<br>22 November.</h2><p>Finish the curriculum before the deadline.<br>Check the rules for points and bonuses.</p><a class="button secondary" href="#badges">Explore the badges ↗</a></div>
+      <div class="event-pass"><img src="/assets/gdg-gwalior-badge.webp" alt="GDG on Campus ABV-IIITM Gwalior" width="100" height="100"><h2>10 badges.<br>22 November.</h2><p>Finish the curriculum before the deadline.<br>Check the rules for ranking and points.</p><a class="button secondary" href="#badges">Explore the badges ↗</a></div>
       <a href="#home">Find your progress →</a></div><div class="ticket-caption">GDG on Campus · ABV-IIITM Gwalior</div></div>
     </section>${clubhouseBand('event-hero')}${intro}
     <section class="standings" id="event-standings"><div class="section-heading"><h2>The leaderboard</h2><span>${people.length} learners</span></div>
@@ -87,7 +100,7 @@ export function bindEventView(snapshot) {
   const guild = document.querySelector('#event-guild');
   if (!search || !guild) return;
   const rows = [...document.querySelectorAll('#event-rows .person-row')];
-  const sorted = [...snapshot.participants].sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name));
+  const sorted = [...snapshot.participants];
   let limit = 30;
   const more = document.querySelector('#event-more');
   function filter() {

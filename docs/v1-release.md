@@ -1,6 +1,18 @@
 # V1 release status — 28 October 2026
 
+## 31 October all-row leaderboard correction
+
+Production deployment `34a91861` includes all 498 numeric rows from the Sheet Leaderboard and preserves its row/tie order. Previously, twelve rows were omitted when multiple roll records shared a Skills Boost profile ID. The public exporter now derives distinct opaque HMAC IDs from private roll values for those rows, while retaining existing IDs for unique profile IDs. Rolls, emails, and source profile IDs remain excluded from JSON. Read-only production reconciliation matched all 498 rows in order by rank/name/score/badge count; current public API has 498 participants and no roll/email fields. Browser rendered 498 leaderboard entries. No Sheet was changed.
+
+## 31 October scoring alignment follow-up
+
+Live Config numeric cells currently specify XP cap 30 and streak cap 7. Their adjacent notes still claim no cap. The public UI now uses the numeric cells and displays a refresh notice because one currently published XP score is 32.1. Current streak scores remain below 7. Rules API includes dynamic `xpRule` and `streakRule`, detects when component scores differ from Config, and renders those settings in the rules page and personal score ledger. Production deployment `63ea024a` is live at the stable Pages URL. Build and rendered browser review passed. Sheet data was not written or refreshed.
+
 This is the current release record; it supersedes older status notes in the handoff.
+
+31 October XP display repair: a blank Config cap was parsed with JavaScript `Number('')` as 0, so the website showed “maximum 0 points.” The API now represents a blank cap as `null` (uncapped), validates it, and uses a new cache key. Deployed as https://7568b2c7.gdg-cloud-study-jam-2026.pages.dev/; stable site returned HTTP 200. API reports divisor100, capnull, pendingtrue and the rules copy says “no cap,” with a note that published XP scores still reflect the old cap. No Sheet or bound Apps Script changes were made. The live script still defaults a blank cap to30, so its leaderboard XP scores remain capped until that script is updated and refreshed.
+
+31 October scoring update: website rules and local organizer source specify XP = total lifetime XP / 100 with no cap; session squares 4 and 7 = 10 points each (attendance capped at 20); approved squares 6 (story) and 8 (community) = 20 points each; full Bingo remains +5. Website rules deployed at https://gdg-cloud-study-jam-2026.pages.dev/. No Sheet or bound Apps Script writes or refresh were performed. The Sheet's blank XP cap currently means no cap, but the bound Apps Script still defaults blanks to 30; live XP components remain capped at 30 until the script is updated and refreshed. Other live scores also still use their old weights. Change the 25 October Config points from 2 to 10 and configure any new session at 10 before refreshing. Keep the live divisor at 100.
 
 30 October V9 rules alignment: user supplied the updated script. XP now scores absolute total profile XP divided by Config's divisor, capped by Config, independent of account age and without a baseline. Attachment defaults are divisor 30/cap 30; the live Config inspected during implementation was divisor 100/cap 30. API now includes validated `xpRule` settings and V9 version; public rules consume these rather than claiming display-only XP or hardcoding the attachment defaults. Scores continue to come from the Sheet unchanged. Live read, validation and build passed.
 

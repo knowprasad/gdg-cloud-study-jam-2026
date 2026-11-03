@@ -1,7 +1,7 @@
 /**
- * V5 event rules adopted 28 Oct 2026.
- * Score = curriculum badge points + best curriculum streak + early completion + attendance.
- * XP is display-only. Attendance is 2 per unique dated session, capped at 10.
+ * V10 scoring: XP = total lifetime profile XP / 100, uncapped when Config's cap is blank.
+ * Attendance is 10 per unique dated session, capped at 20.
+ * Approved Bingo story and community squares each award 20 points.
  * Failed profile updates retain cached verified evidence. Form Responses 1 is never modified.
  */
 
@@ -9,15 +9,17 @@ const SCORING_RULES = [
   ['Program end date', new Date(Date.UTC(2026, 10, 22)), 'Early-finish points fall evenly to 0 on this date.'],
   ['Minimum points for a badge', 4, 'A badge worth fewer credits (for example 0) still scores at least this.'],
   ['Points per badge credit', 1, 'Badge points = credits x this number (but never below the minimum).'],
-  ['Experience points per 1 score point', 30, 'Gained experience points are divided by this.'],
-  ['Experience score cap', 0, 'XP is display-only under V5; no competitive points.'],
-  ['Old account with no starting value: % of lifetime points counted', 0, 'Unused under V5; XP never affects rank.'],
+  ['Experience points per 1 score point', 100, 'Total lifetime experience points divided by 100 (V9+).'],
+  ['Experience score cap', '', 'Leave blank for uncapped total lifetime XP.'],
+  ['Old account with no starting value: % of lifetime points counted', 0, 'Unused: all lifetime XP counts; no starting baseline.'],
   ['Points per day of badge streak', 1, 'Longest run of days in a row with a badge.'],
   ['Streak score cap', 7, 'Most score points the streak can give.'],
   ['Early-finish bonus (maximum)', 15, 'Only for finishing all curriculum badges; shrinks the later they finish.']
 ];
 // Dummy activities: replace the names and points with your own (F13:G17; you can add more rows below, up to row 40).
-const DEFAULT_ACTIVITIES = []; // Add real attendance sessions only, each worth 2 points.
+const DEFAULT_ACTIVITIES = []; // Add real attendance sessions only, each worth 10 points.
+const SESSION_POINTS = 10;
+const ATTENDANCE_CAP = 20;
 const ACT_FIRST_ROW = 5;
 const ACT_LAST_ROW = 1000;
 
@@ -51,8 +53,8 @@ function readScoring_(sh) {
     end: endOk ? toUtcDay_(r[0]) : new Date(Date.UTC(2026, 10, 22)),
     badgeMin: num(r[1], 4),
     perCredit: num(r[2], 1),
-    expPer: Math.max(0.0001, num(r[3], 30)),
-    expCap: num(r[4], 30),
+    expPer: Math.max(0.0001, num(r[3], 100)),
+    expCap: r[4] === '' || r[4] === null ? null : num(r[4], 30),
     oldPct: Math.min(100, Math.max(0, num(r[5], 50))),
     streakPer: num(r[6], 1),
     streakCap: num(r[7], 7),
@@ -127,18 +129,18 @@ function applyActivityPoints_(model, cfg) {
     if (!found.length) return ['', 'Roll number not found', 0];
     if (found.length > 1) return ['', 'Roll shared by ' + found.length + ' students - not applied', 0];
     const m = found[0];
-    if (!act || defaults[normText_(act)] !== 2) return [m.name, 'Choose a configured attendance session worth 2 points', 0];
-    if (typed !== null && (!isFinite(typed) || typed !== 2)) return [m.name, 'Attendance is fixed at 2 points per session', 0];
+    if (!act || defaults[normText_(act)] !== SESSION_POINTS) return [m.name, 'Choose a configured attendance session worth 10 points', 0];
+    if (typed !== null && (!isFinite(typed) || typed !== SESSION_POINTS)) return [m.name, 'Attendance is fixed at 10 points per session', 0];
     if (!(r[3] instanceof Date) || isNaN(r[3].getTime())) return [m.name, 'Enter the actual session date', 0];
     const date = toUtcDay_(r[3]);
     if (date < cfg.start || date > cfg.score.end) return [m.name, 'Session is outside the event window', 0];
-    const pts = 2;
+    const pts = SESSION_POINTS;
     const dupKey = roll + '|' + normText_(act);
     if (act && seen[dupKey] !== undefined) return [m.name, 'Same activity already given in row ' + seen[dupKey] + ' - not counted again', 0];
     if (act) seen[dupKey] = ACT_FIRST_ROW + i;
-    const counted = Math.min(pts, Math.max(0, 10 - m.activityPts));
+    const counted = Math.min(pts, Math.max(0, ATTENDANCE_CAP - m.activityPts));
     m.activityPts += counted;
-    return [m.name, counted ? 'OK' : 'Attendance cap of 10 reached', counted];
+    return [m.name, counted ? 'OK' : 'Attendance cap of 20 reached', counted];
   });
   setValuesIfChanged_(sh.getRange(ACT_FIRST_ROW, 6, n, 3), report);
 }
@@ -182,8 +184,9 @@ function scoreModel_(model, cfg) {
       pts += Math.max(0, (+m.counted || 0) - ticks) * rules.badgeMin;     // extra badges when "count only curriculum" is off
       m.badgePts = pts;
 
-      // Lifetime XP is display-only; preserve historical baseline cells untouched.
-      m.expPts = 0;
+      // V9+: total lifetime profile XP counts, with no baseline subtraction.
+      const totalXpScore = (+m.points || 0) / rules.expPer;
+      m.expPts = rules.expCap === null ? totalXpScore : Math.min(rules.expCap, totalXpScore);
 
       // Recompute from cached eligible curriculum dates, never non-curriculum activity.
       const days = Array.from(new Set((m.cells || []).filter(c => String(c).indexOf('✓') === 0)

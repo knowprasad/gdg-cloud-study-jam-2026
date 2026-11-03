@@ -28,7 +28,7 @@ export const bingoTasks = [
   {
     id: 'story',
     title: 'Share your cloud story',
-    detail: 'Create your cloud story card, post it on Instagram and tag @gdg_oncampus_iiitm. Follow the page, then DM your roll number to that Instagram page for verification. Complete all these steps for this square. Organizer approval earns 2 points.',
+    detail: 'Create your cloud story card, post it on Instagram and tag @gdg_oncampus_iiitm. Follow the page, then DM your roll number to that Instagram page for verification. Complete all these steps for this square. Organizer approval earns 20 points.',
     url: 'https://iiitm-cloud-stories-review.vercel.app/',
     instagramUrl: 'https://www.instagram.com/gdg_oncampus_iiitm/',
   },
@@ -40,7 +40,7 @@ export const bingoTasks = [
   {
     id: 'community',
     title: 'Join our community',
-    detail: 'Join the official campus GDG community page. Share a screenshot confirming your membership, along with your roll number, in the community group for verification. Organizer approval earns 2 points.',
+    detail: 'Join the official campus GDG community page. Share a screenshot confirming your membership, along with your roll number, in the community group for verification. Organizer approval earns 20 points.',
     url: 'https://gdg.community.dev/gdg-on-campus-atal-bihari-vajpayee-indian-institute-of-information-technology-and-management-gwalior-india/',
   },
   {
@@ -78,7 +78,7 @@ export function bingoProgress(person) {
     count,
     complete: count === bingoTasks.length,
     isSample: person.synthetic !== false,
-    activityPoints: Number(approved.has('story')) * 2 + Number(approved.has('community')) * 2,
+    activityPoints: Number(approved.has('story')) * 20 + Number(approved.has('community')) * 20,
     bonus: count === bingoTasks.length ? 5 : 0,
   };
 }

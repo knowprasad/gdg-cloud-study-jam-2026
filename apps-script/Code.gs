@@ -1,4 +1,4 @@
-// V5 rules override historical version notes below: XP display-only, shared ties, dated/capped attendance, inclusive event window, average guild score, cached evidence on failures.
+// Current scoring is in Scoring.gs and Bingo.gs. applyEventRulesV5 below is a historical migration; do not rerun it for V10.
 /**
  * Google Cloud Learn with Communities - organizer tracker
  *
@@ -2025,7 +2025,7 @@ function leaderboardData_(model, cfg) {
         name: m.name, roll: m.roll, group: String(m.manual[M.GROUP] || '').trim(),
         score: +m.score || 0, badgePts: +m.badgePts || 0, expPts: +m.expPts || 0,
         streakPts: +m.streakPts || 0, earlyPts: +m.earlyPts || 0, activityPts: +m.activityPts || 0,
-        counted: m.counted, points: +m.points || 0,
+        counted: m.counted, points: +m.points || 0, bingo: +m.bingoCount || 0,
         done: total > 0 && ticks >= total,
         any: +m.any || 0, streak: +m.streak || 0, active: +m.active || 0,
         since: m.since === undefined || m.since === null ? '' : m.since,
@@ -2035,16 +2035,16 @@ function leaderboardData_(model, cfg) {
         redeemed: m.manual[M.FOLLOW_STATUS] === REDEEMED || m.counted > 0
       };
     })
-    .sort((a, b) => b.score - a.score || String(a.name).localeCompare(String(b.name)));
+    .sort((a, b) => b.counted - a.counted || b.bingo - a.bingo || b.points - a.points || String(a.name).localeCompare(String(b.name)));
 
-  const same = (a, b) => a.score === b.score;
+  const same = (a, b) => a.counted === b.counted && a.bingo === b.bingo && a.points === b.points;
   let rank = 0, prev = null;
   const rows = people.map((p, i) => {
     if (!prev || !same(p, prev)) rank = i + 1;
     prev = p;
     return [rank, p.name, p.roll, p.group || '-', p.score, p.badgePts, p.expPts, p.streakPts, p.earlyPts, p.activityPts,
       p.counted, total ? Math.min(1, p.counted / total) : 0, p.done ? 'Yes' : 'No',
-      p.points, p.streak, p.active, p.tier || '', p.toNext, p.latest, p.since, p.redeemed ? 'Yes' : 'No', p.any];
+      p.points, p.streak, p.active, p.tier || '', p.toNext, p.latest, p.since, p.redeemed ? 'Yes' : 'No', p.any, p.bingo];
   });
   // Groups are ranked on the Group Leaderboard tab (see Groups.gs).
   return { rows: rows };
@@ -2057,13 +2057,13 @@ function buildLeaderboard_(model, cfg) {
 
   setValuesIfChanged_(sh.getRange('A1'), [['Leaderboard - who is ahead']]);
   setValuesIfChanged_(sh.getRange('A2'), [[
-    'Score = badge points (credits, minimum ' + cfg.score.badgeMin + ') + best curriculum streak points + early-finish points + attendance points. XP is display-only. ' +
-    'All verified students are shown, including zero scores. Delayed updates retain cached verified evidence. Equal scores share a rank; XP does not score or break ties. ' +
+    'Score = badge points (credits, minimum ' + cfg.score.badgeMin + ') + experience points (total on the profile, 1 point per ' + cfg.score.expPer + ', max ' + cfg.score.expCap + ') + best curriculum streak points (max ' + cfg.score.streakCap + ') + early-finish points + attendance points (no cap). RANK ORDER: most curriculum badges first, then most Bingo squares complete, then most experience points. ' +
+    'All verified students are shown, including zero scores. Delayed updates retain cached verified evidence. Students equal on badges, Bingo and experience points share a rank. ' +
     'Groups are ranked on the Group Leaderboard tab. The rules and weights are in Config (columns F:H).']]);
 
-  const header = ['Rank', 'Name', 'Roll', 'Group', 'Score', 'Badge points', 'Experience points (gained)', 'Streak points', 'Early-finish points', 'Activity points',
+  const header = ['Rank', 'Name', 'Roll', 'Group', 'Score', 'Badge points', 'Experience score points (lifetime XP / 100)', 'Streak points', 'Early-finish points', 'Activity points',
     'Curriculum badges', 'Progress', 'All curriculum done?', 'Experience points (lifetime)', 'Longest badge streak (days)', 'Active days',
-    'Tier', 'Badges to next reward', 'Latest badge date', 'Member since', 'Credits redeemed?', 'All badges (in window)'];
+    'Tier', 'Badges to next reward', 'Latest badge date', 'Member since', 'Credits redeemed?', 'All badges (in window)', 'Bingo squares complete (of 9)'];
   const rows = data.rows.length ? data.rows : [['No verified student has a counted badge yet.'].concat(new Array(header.length - 1).fill(''))];
   // One-time: the group table used to sit on the right of this tab (column R from v23). It now lives on the Group Leaderboard tab.
   try {

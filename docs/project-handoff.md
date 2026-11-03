@@ -1,10 +1,14 @@
 # Cloud Study Jam website — project handoff
 
-**Updated:** 28 October 2026  
+**Updated:** 31 October 2026  
 **Workspace:** `C:\PROJECTS\kestra\GDG_Cloud_Jam_26 website`  
 **Purpose:** the current source of truth for product decisions, implementation status, risks, and the next work. This replaces earlier chronological notes where they conflict.
 
 ## Current state
+
+Leaderboard completeness correction: production deployment `34a91861` publishes all 498 numeric rows from the Sheet Leaderboard and preserves the Sheet’s row/tie order. Twelve rows were previously dropped because different roll records shared Skills Boost profile IDs. Those rows now receive roll-derived HMAC profile IDs; roll numbers, emails, and raw profile IDs remain server-side. Production comparison matched all 498 rows in order by rank, name, score, and badge count; API scan found no roll/email fields. Browser rendered all 498 rows. No Sheet edits were made.
+
+Latest scoring update: production deployment `63ea024a` is live. Website rules and personal score ledgers read XP/streak caps from live Config cells (30 and 7). Their adjacent notes still say no cap, so resolve that wording/value conflict in the Sheet. The current public feed reconciles with those values (maximum XP component30, maximum streak component5; no refresh warning). See [rules-update.md](rules-update.md).
 
 Latest: automatic server-side read-only data refresh is deployed at `24642cb0`, stable production URL unchanged. Browser reads `/api/leaderboard`, five-minute edge cache and five-minute visible-page polling; stale cache/static fallback on upstream failure. Verified production API HTTP 200/current/486 learners twice, second request cached. Existing profile IDs preserved with ignored server mapping; new IDs use Cloudflare secret `FEED_ID_KEY`. Do not expose the mapping or key. See data-publication.md for restoring deployment prerequisites. This supersedes all older manual-only publication status notes.
 
@@ -47,20 +51,22 @@ This was an unintended write after the user's instruction. No Sheet or Apps Scri
 - Guild assignments and heads come from organizer records. No current team should fabricate guild membership or names.
 - No student attendance submission form is needed; organizers enter verified attendance through their existing workflow.
 
-## Adopted V5 scoring rules
+## Requested V10 scoring rules (prepared locally; not yet active in the live Sheet)
 
-These are the rules implemented in the V5 script and explained on the currently deployed site. The real site still displays synthetic score examples.
+These are the requested rules prepared in local source. The bound organizer script and Config have not been updated, so the new weights are not active in live scores yet.
 
 - Each eligible curriculum badge awards its listed course-credit value, with a minimum of 4 points. A badge counts once; a zero-credit course still earns 4 points.
 - Best consecutive run of badge-completion days earns 1 point per day, capped at 7. Multiple badges on the same day count as one streak day. A break does not erase the best-streak bonus.
 - Completing all ten curriculum badges earns an early-finish bonus that declines linearly from 15 points at the start of the window to 0 on 22 November.
-- Each distinct, verified session earns 2 attendance points, capped at 10. A session counts once.
-- Google Skills lifetime XP is display-only and contributes 0 score points.
+- Each distinct, verified session earns 10 attendance points, capped at 20. A session counts once.
+- Google Skills lifetime XP earns 1 score point per 100 total XP, with no cap or starting baseline subtracted.
+- Approved Bingo story (square 6) and GDG community membership (square 8) each earn 20 points once.
+- Session squares 4 and 7 each carry 10 session points; completing all nine squares still earns a one-time 5-point bonus.
 - Equal scores share a rank; alphabetical order only arranges tied names.
 - Guild score is the average across its fixed eligible roster, including members with zero points.
 - Scores use one decimal place where needed. The site shows a component ledger so students can see where points came from.
 
-The source script uses badge dates rather than timestamps for tie ordering. Do not imply sub-day precision. If scoring rules change, update the authoritative organizer logic and the public rules presentation together; keep the UI independent from the scoring formula.
+The updated rules copy and local Apps Script sources are prepared; the website rules copy is deployed at https://gdg-cloud-study-jam-2026.pages.dev/. Config now has an empty XP cap (meaning no cap), but the bound Apps Script still defaults blank caps to 30. Published XP components remain capped at 30 until that source is updated and refreshed. Other score changes also await the Apps Script/Config update.
 
 ## Cloud Bingo decisions and local implementation
 
@@ -78,7 +84,7 @@ The personal profile has a 3×3 Bingo concept. The nine squares are:
 
 The story-card guide is [iiitm-cloud-stories-review.vercel.app](https://iiitm-cloud-stories-review.vercel.app/). Do not expose Instagram handles on public learner profiles.
 
-Scoring: story-card approval is 2 points once; community-join approval is 2 points once; each verified session follows the existing 2-point attendance rule; completing all nine squares earns a one-time 5-point bonus. Badge/session squares do not duplicate their existing points. Bingo rows/columns and optional sharing of a completed card earn no extra points.
+Scoring: under the requested V10 rules, story and community approvals earn 20 points each; verified sessions earn 10 points each up to the 20-point attendance cap; completing all nine squares earns a one-time 5-point bonus. Badge/session squares do not duplicate their existing points. Bingo rows/columns and optional sharing of a completed card earn no extra points.
 
 `src/bingo.js`, the profile integration in `src/main.js`, related styles, and `apps-script/Bingo.gs` currently implement a **local mock experience**. The demo has a complete profile, a partial profile, and an empty profile; it can create a downloadable completion PNG for the completed demo. None of this is in the deployed website or connected to verified live approvals. Recheck the code and its visible wording before publishing.
 

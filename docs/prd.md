@@ -44,13 +44,13 @@ Help roughly 500 students finish more Google Cloud curriculum badges by making p
 - Each eligible curriculum badge earns its configured credit value, with a 4-point minimum. A badge counts once; zero-credit badges earn 4 points.
 - The best consecutive run of badge-completion days earns 1 point per day, capped at 7. Multiple badges on one day count once. Breaking the run does not remove the best-streak award.
 - Completing all ten badges earns an early-finish bonus that falls linearly from 15 points at the start of the event to 0 on 22 November.
-- Each distinct verified session earns 2 points, capped at 10.
-- Story-card posting and joining the GDG community each earn 2 points once after organizer approval.
+- Each distinct verified session earns 10 points, capped at 20.
+- Story-card posting and joining the GDG community each earn 20 points once after organizer approval.
 - Completing all nine verified Bingo squares earns a one-time 5-point bonus.
-- Google Skills lifetime XP is display-only and contributes 0 points.
+- Google Skills lifetime XP earns 1 score point per 100 XP, with no cap or starting baseline.
 - Equal scores share rank; alphabetical order is only for arranging ties. Guild score is average points per member in the fixed eligible roster, including zero-point members.
 
-Implementation lives in the organizer scoring pipeline. The website consumes calculated values and explains them; it should not recalculate real scores independently. The V5 rules are documented in [rules-update.md](rules-update.md).
+Implementation lives in the organizer scoring pipeline. The website consumes calculated values and explains them; it should not recalculate real scores independently. The requested V10 rules are documented in [rules-update.md](rules-update.md).
 
 ## Privacy and source-of-truth requirements
 
