@@ -23,6 +23,7 @@ const participants = eligible.map(person => {
     guildId: person.guildId === 'unassigned' ? null : person.guildId,
     rank: person.rank, points: person.points, badgesCompleted: person.badges,
     badgeDetails: breakdown.badgeDetails, approvedActivities: person.approvedActivities, bestStreak: person.bestStreak,
+    lifetimeXp: person.lifetimeXp ?? 0,
     scoreBreakdown: Object.fromEntries(['badges', 'streak', 'earlyFinish', 'attendance', 'activities', 'bingo', 'xp'].map(key => [key, breakdown[key] || 0])),
   };
 });

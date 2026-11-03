@@ -28,6 +28,7 @@ export async function liveSnapshot(secret) {
     guildId: person.guildId === 'unassigned' ? null : person.guildId,
     rank: person.rank, points: person.points, badgesCompleted: person.badges,
     badgeDetails: person.scoreBreakdown.badgeDetails, approvedActivities: person.approvedActivities, bestStreak: person.bestStreak,
+    lifetimeXp: person.lifetimeXp ?? 0,
     scoreBreakdown: Object.fromEntries(['badges', 'streak', 'earlyFinish', 'attendance', 'activities', 'bingo', 'xp'].map(key => [key, person.scoreBreakdown[key] || 0])),
     };
   }));

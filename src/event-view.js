@@ -20,13 +20,19 @@ export function eventView(snapshot, status, hash) {
   const updated = new Intl.DateTimeFormat('en-IN', {
     dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata',
   }).format(new Date(snapshot.updatedAt));
-  const rows = list => list.map((person, index) => `
+  const rows = list => list.map((person, index) => {
+    const bingoCount = person.approvedActivities?.length ?? 0;
+    const rawXp = person.lifetimeXp !== undefined
+      ? person.lifetimeXp
+      : Math.round((person.scoreBreakdown?.xp ?? 0) * (snapshot.xpRule?.perPoint ?? 100));
+    return `
     <a class="person-row" href="#profile/${person.id}" ${index >= 30 ? 'hidden' : ''}>
       <span class="rank">${person.rank}</span>
-      <span class="person-name">${escape(person.name)}<small>${escape(guildName(person.guildId))}</small></span>
+      <span class="person-name">${escape(person.name)}<small>${escape(guildName(person.guildId))} · ${bingoCount}/9 Bingo · ${rawXp.toLocaleString('en-IN')} XP</small></span>
       <span class="badges-column">${person.badgesCompleted}/10</span>
       <strong>${person.points.toFixed(1)}</strong>
-    </a>`).join('');
+    </a>`;
+  }).join('');
   const intro = `<p class="event-data-status" role="status">Last updated ${escape(updated)} IST${status === 'stale' ? ' · Showing saved progress. Refresh is temporarily unavailable.' : ''}</p>`;
   if (hash.startsWith('profile/') && !profile) return `${intro}<section class="empty-state"><h1>Profile not found</h1><p>This profile link may have changed. Find your name in the standings.</p><a href="#leaderboard" class="button primary">Find my place</a></section>`;
   if (hash === 'badges') return `${intro}<section class="simple-intro"><h1>The badge list</h1><p>Ten curriculum badges. Each eligible completion counts once.</p></section><div class="catalog-grid">${courses.map(course => `<article class="course-tile"><span class="category">${escape(course.category)}</span><h2>${escape(course.title)}</h2><p>${Math.max(4, course.credits)} event points</p><a class="text-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Open Google Skills ↗</a></article>`).join('')}</div>`;
@@ -38,14 +44,33 @@ export function eventView(snapshot, status, hash) {
     const streakRule = snapshot.streakRule;
     const streakCap = streakRule?.cap == null ? 'no cap' : `maximum ${streakRule.cap} points`;
     const xpLimit = xpRule?.cap == null ? 'no cap' : `maximum ${xpRule.cap} points`;
+    const bingoCount = profile.approvedActivities?.length ?? 0;
+    const rawXp = profile.lifetimeXp !== undefined
+      ? profile.lifetimeXp
+      : Math.round((profile.scoreBreakdown?.xp ?? 0) * (xpRule?.perPoint ?? 100));
+    const aheadBingo = ahead ? (ahead.approvedActivities?.length ?? 0) : 0;
+    const aheadXp = ahead ? (ahead.lifetimeXp !== undefined ? ahead.lifetimeXp : Math.round((ahead.scoreBreakdown?.xp ?? 0) * (xpRule?.perPoint ?? 100))) : 0;
+    let rankGuidance = 'You hold the top rank! Keep learning.';
+    if (ahead) {
+      if (ahead.badgesCompleted === profile.badgesCompleted && aheadBingo === bingoCount) {
+        const gap = aheadXp - rawXp;
+        rankGuidance = `Tied on badges (${profile.badgesCompleted}/10) and Bingo (${bingoCount}/9) with ${escape(ahead.name)} (#${ahead.rank}). ${gap > 0 ? `Earn ${gap.toLocaleString('en-IN')} more Lifetime XP on Google Skills to climb ahead.` : 'Climb ahead by earning more Lifetime XP on Google Skills.'}`;
+      } else if (ahead.badgesCompleted === profile.badgesCompleted) {
+        const bingoGap = aheadBingo - bingoCount;
+        rankGuidance = `Tied on badges (${profile.badgesCompleted}/10) with ${escape(ahead.name)} (#${ahead.rank}). Complete ${bingoGap} more Bingo square${bingoGap === 1 ? '' : 's'} to climb ahead.`;
+      } else {
+        const badgeGap = ahead.badgesCompleted - profile.badgesCompleted;
+        rankGuidance = `${escape(ahead.name)} (#${ahead.rank}) is ahead with ${ahead.badgesCompleted}/10 badges. Earn ${badgeGap} more curriculum badge${badgeGap === 1 ? '' : 's'} to close the distance.`;
+      }
+    }
     const bingoPerson = { ...profile, synthetic: false, badges: profile.badgesCompleted, scoreBreakdown: { ...profile.scoreBreakdown, badgeDetails: profile.badgeDetails || [] } };
     return `${intro}<section class="simple-intro"><a href="#leaderboard" class="text-link">← Back to standings</a>
-      <h1>${escape(profile.name)}</h1><p>#${profile.rank} · ${profile.badgesCompleted}/10 badges · ${profile.approvedActivities?.length ?? 0}/9 Bingo · ${profile.points.toFixed(1)} points · ${escape(guildName(profile.guildId))}</p><button class="button secondary" data-remember-event="${profile.id}">Remember my profile</button>
-      <p>${ahead ? `Rank is ordered by Badges (1st), Bingo squares (2nd), and Profile XP (3rd). Complete more badges and Bingo milestones to climb above ${escape(ahead.name)}.` : 'You hold the top rank! Keep learning.'}</p></section>
+      <h1>${escape(profile.name)}</h1><p>#${profile.rank} · ${profile.badgesCompleted}/10 badges · ${bingoCount}/9 Bingo · ${rawXp.toLocaleString('en-IN')} Lifetime XP · ${profile.points.toFixed(1)} event points · ${escape(guildName(profile.guildId))}</p><button class="button secondary" data-remember-event="${profile.id}">Remember my profile</button>
+      <p>${rankGuidance}</p></section>
       <section class="score-breakdown"><h2>Where the points came from</h2><dl class="score-ledger">
         ${Object.entries(labels).map(([key, label]) => {
           const note = key === 'streak' ? `${streakRule?.pointsPerDay ?? 1} point per consecutive badge day · ${streakCap}`
-            : key === 'xp' ? `1 point per ${xpRule?.perPoint ?? 100} total XP · ${xpLimit}`
+            : key === 'xp' ? `${rawXp.toLocaleString('en-IN')} lifetime profile XP · 1 point per ${xpRule?.perPoint ?? 100} XP · ${xpLimit}`
               : key === 'attendance' ? '10 points per verified session · maximum 20 points'
                 : key === 'activities' ? '20 points per approved story or GDG membership task'
                   : key === 'bingo' ? '5 points for all nine verified squares' : '';
@@ -71,6 +96,7 @@ export function eventView(snapshot, status, hash) {
       <a href="#home">Find your progress →</a></div><div class="ticket-caption">GDG on Campus · ABV-IIITM Gwalior</div></div>
     </section>${clubhouseBand('event-hero')}${intro}
     <section class="standings" id="event-standings"><div class="section-heading"><h2>The leaderboard</h2><span>${people.length} learners</span></div>
+      <p class="scoring-preview-note">Rank is determined by <strong>1. Badges</strong> (out of 10) → <strong>2. Bingo squares</strong> (out of 9) → <strong>3. Lifetime XP</strong>. Points show overall event score. <a href="#rules">How ranking works →</a></p>
       <div class="board-controls"><label class="search-field"><span class="sr-only">Search learners</span><input id="event-search" type="search" placeholder="Search your name…"></label>
       <label class="guild-select"><span class="sr-only">Filter guilds</span><select id="event-guild"><option value="">All learners</option>${snapshot.guilds.map(guild => `<option value="${escape(guild.id)}">${escape(guild.name)}</option>`).join('')}<option value="unassigned">Guild not assigned</option></select></label></div>
       <div class="table-header"><span>Place</span><span>Learner</span><span class="badges-column">Badges</span><span>Points</span></div>

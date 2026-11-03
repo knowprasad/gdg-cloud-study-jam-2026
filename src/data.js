@@ -46,7 +46,7 @@ participants.forEach((p, index) => {
   const completions = courses.slice(0, p.badges).map((c, i) => ({ id: c.id,
     date: new Date(Date.UTC(2026, 9, 20 - Math.max(0, run - 1) + Math.min(i, Math.max(0, run - 1)))).toISOString().slice(0, 10) }));
   const attendance = Array.from({length: p.badges ? index % 4 : 0}, (_, i) => ({id: `demo-session-${i + 1}`, date: `2026-10-${String(12 + i).padStart(2, '0')}`}));
-  p.lifetimeXp = p.badges * 100;
+  p.lifetimeXp = Math.max(0, p.badges * 200 + (index < 10 ? (10 - index) * 100 : (index % 11) * 100));
   p.scoreBreakdown = scoreProgress(completions, attendance, courses, p.lifetimeXp);
   p.points = p.scoreBreakdown.total; p.bestStreak = p.scoreBreakdown.bestStreak;
   p.currentStreak = 0; // The mock snapshot is 28 Oct; evidence ends on 20 Oct.

@@ -31,7 +31,7 @@ export function validateSnapshot(input) {
   }
   const ids = new Set();
   for (const person of input.participants) {
-    fields(person, ['id', 'name', 'guildId', 'rank', 'points', 'badgesCompleted', 'scoreBreakdown', 'badgeDetails', 'approvedActivities', 'bestStreak']);
+    fields(person, ['id', 'name', 'guildId', 'rank', 'points', 'badgesCompleted', 'scoreBreakdown', 'badgeDetails', 'approvedActivities', 'bestStreak', 'lifetimeXp']);
     if (person.badgeDetails !== undefined) {
       if (!Array.isArray(person.badgeDetails)) throw new Error('Invalid badge evidence');
       for (const badge of person.badgeDetails) {
@@ -43,6 +43,7 @@ export function validateSnapshot(input) {
     if (person.approvedActivities !== undefined && (!Array.isArray(person.approvedActivities) ||
         person.approvedActivities.some(id => !['first-badge','credits','ai-studio','kickoff','five-badges','story','second-session','community','instagram','ten-badges'].includes(id)))) throw new Error('Invalid activity');
     if (person.bestStreak !== undefined && !finite(person.bestStreak)) throw new Error('Invalid streak');
+    if (person.lifetimeXp !== undefined && !finite(person.lifetimeXp)) throw new Error('Invalid lifetime XP');
     if (typeof person.id !== 'string' || !/^p-[a-f0-9]{32}$/.test(person.id) || ids.has(person.id) ||
         typeof person.name !== 'string' || !person.name.trim() || person.name.length > 160 ||
         !Number.isInteger(person.rank) || person.rank < 1 || !finite(person.points) ||

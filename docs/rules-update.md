@@ -22,4 +22,6 @@
 * The rules page (`#rules`) displays the prominent "How Leaderboard Ranking Works" 3-tier guide alongside the 69-point badge scale.
 * Profile views have removed the obsolete `"X points to move ahead"` message and now guide learners based on badges, Bingo squares, and XP.
 * The API adapter supports reading through column W (`A4:W`) for `'Bingo squares complete (of 9)'`.
+* Raw Google Skills lifetime XP (`lifetimeXp`) is now published in the public snapshot schema and rendered on individual profiles and leaderboard rows (`· X/9 Bingo · X XP`).
+* Leaderboard standings display an explanatory ranking hierarchy note distinguishing the 3-tier ranking determiners from total event points.
 * Tests (`scripts/verify-scoring.mjs` and `scripts/check-snapshot.mjs`) and production build verified.
