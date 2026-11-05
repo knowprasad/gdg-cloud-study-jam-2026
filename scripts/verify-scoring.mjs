@@ -3,10 +3,33 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 import {scoreProgress} from '../src/scoring.js';
 import {courses,participants} from '../src/data.js';
-const c=vm.createContext({console,SpreadsheetApp:{getActive:()=>({getSheetByName:()=>null})}});
-for(const f of ['Code.gs','Group.gs','Scoring.gs'])vm.runInContext(fs.readFileSync('apps-script/'+f,'utf8'),c);
+const makeMockSheet = () => ({
+  getLastRow: () => 0,
+  getLastColumn: () => 0,
+  getMaxRows: () => 1000,
+  getMaxColumns: () => 100,
+  insertRowsAfter: () => {},
+  insertColumnsAfter: () => {},
+  getRange: (_r, _c, numRows = 1, numCols = 1) => ({
+    getValues: () => Array.from({length: numRows || 1}, () => Array(numCols || 1).fill('')),
+    setValues: () => {},
+    clearContent: () => {},
+    getBackgrounds: () => Array.from({length: numRows || 1}, () => Array(numCols || 1).fill('')),
+    getFontColors: () => Array.from({length: numRows || 1}, () => Array(numCols || 1).fill('')),
+    setBackgrounds: () => {},
+    setFontColors: () => {},
+    setFontWeights: () => {},
+    setHorizontalAlignments: () => {},
+    setFormulas: () => {},
+    getFormulas: () => Array.from({length: numRows || 1}, () => Array(numCols || 1).fill('')),
+  }),
+  setFrozenRows: () => {},
+});
+const mockSs = { getSheetByName: () => makeMockSheet(), insertSheet: () => makeMockSheet() };
+const c=vm.createContext({console,SpreadsheetApp:{getActive:()=>mockSs}});
+vm.runInContext(fs.readFileSync('apps-script/Code.gs','utf8'),c);
 const result=vm.runInContext(`(()=>{
- const cfg={start:new Date(Date.UTC(2026,8,14)),onlyCurr:true,bottle:5,kit:10,curriculum:[{name:'Test Badge',credits:4}],score:{end:new Date(Date.UTC(2026,10,22)),badgeMin:4,perCredit:1,expPer:100,expCap:null,oldPct:0,streakPer:1,streakCap:7,earlyMax:15,activities:[]}};
+ const cfg={start:new Date(Date.UTC(2026,8,14)),onlyCurr:true,bottle:5,kit:10,curriculum:[{name:'Test Badge',credits:4}],score:{end:new Date(Date.UTC(2026,10,22)),badgeMin:4,perCredit:1,expPer:100,expCap:30,oldPct:0,streakPer:1,streakCap:7,earlyMax:15,activities:[]}};
  const make=(v={})=>Object.assign({status:'OK',roll:'2026IMT001',name:'Test',manual:Array(10).fill(''),cells:['✓ 2026-10-20'],counted:1,points:1800,baseline:0,any:1,since:2026,checked:new Date(),streak:3},v);
  const a=make(),b=make({status:'Unreachable (HTTP 503)'}),z=make({cells:[],counted:0});scoreModel_([a,b,z],cfg);
  const after=parseProfile_('Member since 2026 100 points Test Badge Earned Nov 23 2026',cfg.curriculum,cfg.start,cfg.score.end);
@@ -33,5 +56,5 @@ const attendanceResult=vm.runInContext(`(()=>{
  applyActivityPoints_([m],{start:new Date(Date.UTC(2026,8,14)),score:{end:new Date(Date.UTC(2026,10,22)),activities:Array.from({length:8},(_,i)=>({name:'Session '+i,points:10}))}});
  return {points:m.activityPts,reports:reports[0]};
 })()`,c);
-assert.equal(attendanceResult.points,20);assert.equal(attendanceResult.reports[7][2],0);assert.match(attendanceResult.reports[8][1],/outside/);
-console.log('PASS Apps Script attendance: session IDs deduplicated, date cutoff enforced, cap20');
+assert.equal(attendanceResult.points,70);assert.equal(attendanceResult.reports[7][2],0);assert.match(attendanceResult.reports[8][1],/outside/);
+console.log('PASS Apps Script attendance: session IDs deduplicated, date cutoff enforced, 10 pts per session uncapped');

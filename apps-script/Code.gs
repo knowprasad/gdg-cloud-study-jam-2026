@@ -1,4 +1,5 @@
-// Current scoring is in Scoring.gs and Bingo.gs. applyEventRulesV5 below is a historical migration; do not rerun it for V10.
+// V9: experience points = the profile's TOTAL experience points / 30 = 1 score point per 30, capped (Config G5:G6, default 30 and 30). No starting value, any account age. Everything else is V5.
+// V5 rules (XP part replaced by V9): shared ties, dated/capped attendance, inclusive event window, average guild score, cached evidence on failures.
 /**
  * Google Cloud Learn with Communities - organizer tracker
  *
@@ -124,7 +125,8 @@ const PENDING = 'Pending check';
 const FILLED = 'Form filled by us';
 const REDEEMED = 'Credits redeemed';     // set when the student confirms they redeemed their credits (shown in green)
 const HIDE = 'Hide from list';          // choose this in Follow-up status to remove a student from the Follow-up tab
-const FOLLOW_STATUSES = ['Not started', FILLED, REDEEMED, 'Asked to resubmit', 'Contacted', 'Waiting for response', 'Resolved', HIDE];
+const EXCLUDED = 'Not eligible';        // choose this in Follow-up status: the student is out of the event (leaderboard, groups, Bingo, counts) and leaves the Follow-up tab. Change it back in the Tracker's "Follow-up status (manual)" column to undo.
+const FOLLOW_STATUSES = ['Not started', FILLED, REDEEMED, 'Asked to resubmit', 'Contacted', 'Waiting for response', 'Resolved', HIDE, EXCLUDED];
 const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
 const MONTH_RE = '(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)';
 
@@ -255,7 +257,7 @@ function runRefresh_(retryFailures) {
       time: new Date(),
       status: refreshStatus,
       submissions: model.length,
-      active: model.filter(m => m.status !== DUP).length,
+      active: model.filter(m => m.status !== DUP && m.status !== EXCLUDED).length,
       verified: model.filter(m => m.status === 'OK').length,
       failed: failedCount,
       seconds: Math.round((Date.now() - startedAt.getTime()) / 1000),
@@ -956,7 +958,7 @@ function buildModel_(resp, cfg) {
     const samePid = !!(prev && prev[I.PID] === r.id && r.id);
 
     if (status === PENDING && samePid && prev[I.STATUS] &&
-        prev[I.STATUS] !== PENDING && prev[I.STATUS] !== DUP) {
+        prev[I.STATUS] !== PENDING && prev[I.STATUS] !== DUP && prev[I.STATUS] !== EXCLUDED) {
       status = prev[I.STATUS];
     }
 
@@ -974,6 +976,8 @@ function buildModel_(resp, cfg) {
       if (prev && iManual < 3) return prev[FIXED.length + iManual] || '';
       return '';
     });
+
+    if (status !== DUP && manual[M.FOLLOW_STATUS] === EXCLUDED) status = EXCLUDED;   // out of the event: no profile check, no scoring
 
     return {
       key: r.key,
@@ -1008,7 +1012,7 @@ function buildModel_(resp, cfg) {
   const emailCount = {};
 
   model.forEach(m => {
-    if (m.status === DUP) return;
+    if (m.status === DUP || m.status === EXCLUDED) return;
     if (m.roll) rollCount[m.roll] = (rollCount[m.roll] || 0) + 1;
     const email = String(m.email || '').trim().toLowerCase();
     if (email) emailCount[email] = (emailCount[email] || 0) + 1;
@@ -1053,7 +1057,7 @@ function checkProfiles_(model, cfg, retryFailures) {
   const age = m => (m.checked ? responseTime_(m.checked) : 0);
 
   const todo = model.filter(m => {
-    if (!m.pid || m.status === DUP) return false;
+    if (!m.pid || m.status === DUP || m.status === EXCLUDED) return false;
     const isFailed = String(m.status).indexOf('Unreachable') === 0;
     return !m.checked || Date.now() - age(m) > staleMs || m.status === PENDING || (retryFailures && isFailed) ||
       (m.status === 'OK' && m.active === '');       // one-time: fill in the new streak columns
@@ -1319,7 +1323,7 @@ function buildDashboard_(cfg, model, refreshStatus, checkSummary) {
   const status = T('G');
   const kpis = [
     ['Form submissions', '=COUNTA(' + T('B') + ')', 'All response rows represented in Tracker'],
-    ['Non-duplicate records', '=COUNTIFS(' + T('B') + ',"<>",' + status + ',"<>' + DUP + '")', 'Superseded records are excluded'],
+    ['Non-duplicate records', '=COUNTIFS(' + T('B') + ',"<>",' + status + ',"<>' + DUP + '",' + status + ',"<>' + EXCLUDED + '")', 'Superseded and Not eligible records are excluded'],
     ['Profile verified', '=COUNTIF(' + status + ',"OK")', 'Public profile opened and parsed'],
     ['Missing / invalid profile link', '=COUNTIF(' + status + ',"Invalid URL*")+COUNTIF(' + status + ',"No profile URL")', 'Ask the student to correct the link'],
     ['Profile unreachable', '=COUNTIF(' + status + ',"Unreachable*")', 'May need retry or manual check'],
@@ -1646,7 +1650,7 @@ function followUpPeople_(model) {
   model.forEach((m, i) => {
     if (m.status === DUP) return;
     if (rollLooksValid_(m.roll) && latestForRoll[personKey(m)] && latestForRoll[personKey(m)].index !== i) return;
-    if (m.manual[M.FOLLOW_STATUS] === HIDE) return;     // you asked to remove this student from the list
+    if (m.manual[M.FOLLOW_STATUS] === HIDE || m.status === EXCLUDED) return;     // removed from the list (Hide from list / Not eligible)
 
     // Redeemed = you marked "Credits redeemed", OR the student has earned a curriculum badge (they could not
     // have without redeeming). A redeemed student is past the form-filling stage, so old registration problems
@@ -1829,7 +1833,7 @@ function buildRefillCheck_(model) {
 
   const rows = [];
   model.forEach(m => {
-    if (m.status === DUP) return;
+    if (m.status === DUP || m.status === EXCLUDED) return;
     if (norm(m.email) === norm(m.confirmEmail)) return;           // same email in both places: nothing to fix
     const filled = m.manual[M.FOLLOW_STATUS] === FILLED;
     const refilled = String(done[m.key] || '').toLowerCase() === 'yes' ? 'Yes' : '';
@@ -1957,7 +1961,7 @@ function ensureStatusValidation_() {
     if (!dv) return true;
     const vals = dv.getCriteriaValues();
     const list = (vals && vals[0]) || [];
-    return !(list.includes(HIDE) && list.includes(REDEEMED));
+    return !(list.includes(HIDE) && list.includes(REDEEMED) && list.includes(EXCLUDED));
   };
   const tr = ss.getSheetByName(SHEETS.TRACK);
   const tc = FIXED.length + M.FOLLOW_STATUS + 1;
@@ -2035,6 +2039,8 @@ function leaderboardData_(model, cfg) {
         redeemed: m.manual[M.FOLLOW_STATUS] === REDEEMED || m.counted > 0
       };
     })
+    // V10 ranking order (a fixed sort, not bonus points): most curriculum badges first, then most Bingo squares,
+    // then the most raw experience points on the profile. Score is shown but does not decide the rank.
     .sort((a, b) => b.counted - a.counted || b.bingo - a.bingo || b.points - a.points || String(a.name).localeCompare(String(b.name)));
 
   const same = (a, b) => a.counted === b.counted && a.bingo === b.bingo && a.points === b.points;
@@ -2057,11 +2063,12 @@ function buildLeaderboard_(model, cfg) {
 
   setValuesIfChanged_(sh.getRange('A1'), [['Leaderboard - who is ahead']]);
   setValuesIfChanged_(sh.getRange('A2'), [[
-    'Score = badge points (credits, minimum ' + cfg.score.badgeMin + ') + experience points (total on the profile, 1 point per ' + cfg.score.expPer + ', max ' + cfg.score.expCap + ') + best curriculum streak points (max ' + cfg.score.streakCap + ') + early-finish points + attendance points (no cap). RANK ORDER: most curriculum badges first, then most Bingo squares complete, then most experience points. ' +
+    'Score = badge points (credits, minimum ' + cfg.score.badgeMin + ') + experience points (total on the profile, 1 point per ' + cfg.score.expPer + ', max ' + cfg.score.expCap + ') + best curriculum streak points (max ' + cfg.score.streakCap + ') + early-finish points + attendance points (no cap). ' +
+    'RANK ORDER: most curriculum badges first, then most Bingo squares complete, then the most experience points on the profile. Score is shown for information and does not decide the rank. ' +
     'All verified students are shown, including zero scores. Delayed updates retain cached verified evidence. Students equal on badges, Bingo and experience points share a rank. ' +
     'Groups are ranked on the Group Leaderboard tab. The rules and weights are in Config (columns F:H).']]);
 
-  const header = ['Rank', 'Name', 'Roll', 'Group', 'Score', 'Badge points', 'Experience score points (lifetime XP / 100)', 'Streak points', 'Early-finish points', 'Activity points',
+  const header = ['Rank', 'Name', 'Roll', 'Group', 'Score', 'Badge points', 'Experience points (scored)', 'Streak points', 'Early-finish points', 'Activity points',
     'Curriculum badges', 'Progress', 'All curriculum done?', 'Experience points (lifetime)', 'Longest badge streak (days)', 'Active days',
     'Tier', 'Badges to next reward', 'Latest badge date', 'Member since', 'Credits redeemed?', 'All badges (in window)', 'Bingo squares complete (of 9)'];
   const rows = data.rows.length ? data.rows : [['No verified student has a counted badge yet.'].concat(new Array(header.length - 1).fill(''))];
@@ -2087,11 +2094,11 @@ function buildLeaderboard_(model, cfg) {
 
   if (sh.getFrozenRows() !== 4) sh.setFrozenRows(4);
   if (String(sh.getRange('A1').getBackground()).toLowerCase() !== STYLE.navy) {
-    sh.getRange('A1:X1').setBackground(STYLE.navy).setFontColor(STYLE.white).setFontWeight('bold').setFontSize(14);
+    sh.getRange('A1:Y1').setBackground(STYLE.navy).setFontColor(STYLE.white).setFontWeight('bold').setFontSize(14);
     sh.getRange('A2').setFontColor(STYLE.textGray);
     setRowHeightIfNeeded_(sh, 1, 28);
   }
-  [60, 200, 120, 80, 80, 90, 120, 90, 110, 100, 100, 90, 110, 130, 130, 80, 110, 130, 120, 100, 120, 110]
+  [60, 200, 120, 80, 80, 90, 120, 90, 110, 100, 100, 90, 110, 130, 130, 80, 110, 130, 120, 100, 120, 110, 130]
     .forEach((w, i) => setColumnWidthIfNeeded_(sh, i + 1, w));
 }
 
@@ -2113,7 +2120,7 @@ function batchLabel_(roll) {
 function batchYearRows_(model) {
   const g = {};
   model.forEach(m => {
-    if (m.status === DUP) return;
+    if (m.status === DUP || m.status === EXCLUDED) return;
     const b = batchLabel_(m.roll);
     const x = g[b.label] || (g[b.label] = { sort: b.sort, students: 0, verified: 0 });
     x.students++;
@@ -2351,28 +2358,584 @@ function applyEventRulesV5() {
     if (props.getProperty('EVENT_RULES_VERSION') !== '2026-10-28-v5') {
       const ss = SpreadsheetApp.getActive();
       const conf = ss.getSheetByName(SHEETS.CONF);
-      if (!conf || String(conf.getRange('F1').getValue()).trim() !== 'Scoring rule') throw new Error('Unexpected Config layout; migration stopped.');
+      if (!conf) throw new Error('Config missing');
+      const heading = String(conf.getRange('F1').getValue()).trim();
+      if (heading && heading !== 'Scoring rule') throw new Error('Unexpected Config layout');
+      if (!heading && conf.getRange('F1:H40').getValues().some(r=>r.some(v=>v!=='' && v!==null))) throw new Error('Scoring area is occupied');
       const activity = ss.getSheetByName(SHEETS.ACTIVITY);
       if (activity && activity.getLastRow() >= 5 && activity.getRange(5,1,activity.getLastRow()-4,5).getValues().some(r=>r.some(v=>v!=='' && v!==null))) throw new Error('Activity awards already exist; review them before changing the rules.');
       const sessions = conf.getRange('F13:H40').getValues();
       if (sessions.some(r=>r[0] && String(r[0]).toLowerCase().indexOf('(dummy)')<0)) throw new Error('Real session configuration exists; migration stopped to preserve it.');
       backupOrganizerData();
-      conf.getRange('G3:G10').setValues([[4],[1],[30],[0],[0],[1],[7],[15]]);
-      conf.getRange('H6:H7').setValues([['XP is display-only under event rules V5.'],['Unused: lifetime XP does not score or break ties.']]);
+      ensureScoringConfig_(conf);
+      conf.getRange('G3:G10').setValues([[4],[1],[100],[30],[0],[1],[7],[15]]);
+      conf.getRange('H5:H7').setValues([['Total experience points on the profile divided by this (absolute points, any account age).'],['Most score points experience can give.'],['Unused: total experience points count for every account.']]);
       conf.getRange('F13:H40').clearContent();
       conf.getRange('F12:H12').setValues([['Attendance session ID','Points','Session title / note']]);
       props.setProperty('EVENT_RULES_VERSION','2026-10-28-v5');
-      appendRefreshLog_({time:new Date(),status:'RULES UPDATED',submissions:'',active:'',verified:'',failed:'',seconds:0,note:'V5 adopted: XP display-only; curriculum streak; 2/session capped 10; shared ties; average guild scores; event cutoff. Five organizer tabs backed up before changing Config.'});
+      appendRefreshLog_({time:new Date(),status:'RULES UPDATED',submissions:'',active:'',verified:'',failed:'',seconds:0,note:'V5 adopted: curriculum streak; 2/session capped 10; shared ties; average guild scores; event cutoff. Existing organizer tabs backed up before changing Config.'});
     }
   } finally { lock.releaseLock(); }
   runRefresh_(false);
 }
 
+/** V5: fixed assigned roster, average student score including zeroes.
+ * Participation is informational. Equal scores share rank. Follow-up hiding does not remove eligibility.
+ * Form Responses 1 is never modified. */
+
+const GROUP_FIRST_ROW = 5;      // Groups tab: data starts here
+const GROUP_LAST_ROW = 200;     // Groups tab: drop-down looks this far down
+
+function groupCell_(v) {
+  if (v === undefined || v === null) return '';
+  return typeof v === 'string' ? v.trim() : v;
+}
+
+function groupKey_(v) {
+  return String(groupCell_(v));
+}
+
+function groupCompare_(a, b) {
+  const na = Number(a), nb = Number(b);
+  if (a !== '' && b !== '' && !isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+  return String(a).localeCompare(String(b), undefined, { numeric: true });
+}
+
+/* ------------------------------------------------------------ Groups tab */
+
+function ensureGroupsSheet_() {
+  const ss = SpreadsheetApp.getActive();
+  const sh = ss.getSheetByName(SHEETS.GROUPS) || ss.insertSheet(SHEETS.GROUPS);
+  setValuesIfChanged_(sh.getRange('A1'), [['Groups - type each group number and its head']]);
+  setValuesIfChanged_(sh.getRange('A2'), [[
+    'Type one group per row from row 5 down: the group number in column A and the group head in column B. ' +
+    'Then pick each student\'s group in the Follow-up tab (Group column). Nothing in rows 5 and below is ever overwritten by the script.']]);
+  setValuesIfChanged_(sh.getRange('A4:B4'), [['Group', 'Group head']]);
+  styleHeaderRange_(sh.getRange('A4:B4'));
+  if (String(sh.getRange('A1').getBackground()).toLowerCase() !== STYLE.navy) {
+    sh.getRange('A1:H1').setBackground(STYLE.navy).setFontColor(STYLE.white).setFontWeight('bold').setFontSize(14);
+    sh.getRange('A2').setFontColor(STYLE.textGray);
+  }
+  if (sh.getFrozenRows() !== 4) sh.setFrozenRows(4);
+  setColumnWidthIfNeeded_(sh, 1, 90);
+  setColumnWidthIfNeeded_(sh, 2, 240);
+  return sh;
+}
+
+// [{group, head}] in the order typed; blank group cells are skipped and a repeated group number keeps its first head.
+function readGroupsList_() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(SHEETS.GROUPS);
+  if (!sh || sh.getLastRow() < GROUP_FIRST_ROW) return [];
+  const vals = sh.getRange(GROUP_FIRST_ROW, 1, sh.getLastRow() - GROUP_FIRST_ROW + 1, 2).getValues();
+  const seen = {}, out = [];
+  vals.forEach(r => {
+    const g = groupKey_(r[0]);
+    if (!g || seen[g]) return;
+    seen[g] = true;
+    out.push({ group: g, head: String(r[1] === undefined || r[1] === null ? '' : r[1]).trim() });
+  });
+  return out;
+}
+
+function groupDropdownRule_() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(SHEETS.GROUPS);
+  if (!sh) return null;
+  return SpreadsheetApp.newDataValidation()
+    .requireValueInRange(sh.getRange(GROUP_FIRST_ROW, 1, GROUP_LAST_ROW - GROUP_FIRST_ROW + 1, 1), true)
+    .setAllowInvalid(false).build();
+}
+
+/* --------------------------------------------------------------- members */
+
+function latestBadgeDay_(m) {
+  const days = (m.cells || []).map(c => String(c).indexOf('✓') === 0 ? String(c).slice(2).trim() : '').filter(Boolean).sort();
+  return days.length ? days[days.length - 1] : '';
+}
+
+// One entry per person who has a group. Same "one row per person" rule as the Follow-up tab (see latestPersonRows_):
+// the latest submission by the same roll number and name wins; superseded and hidden rows are left out.
+function groupMembers_(model) {
+  const out = [];
+  latestPersonRows_(model).forEach(m => {
+    // Follow-up visibility does not determine competitive eligibility.
+    const g = groupKey_(m.manual[M.GROUP]);
+    if (!g) return;
+    const ok = hasScoringEvidence_(m);
+    out.push({
+      group: g, name: m.name, roll: m.roll, status: m.status,
+      score: +m.score || 0,
+      counted: ok ? (+m.counted || 0) : 0,
+      points: ok ? (+m.points || 0) : 0,
+      streak: ok ? (+m.streak || 0) : 0,
+      latest: ok ? latestBadgeDay_(m) : ''
+    });
+  });
+  return out;
+}
+
+function sortMembers_(list) {
+  return list.slice().sort((a, b) => b.score - a.score || String(a.name).localeCompare(String(b.name)));
+}
+
+/* ----------------------------------------------------------- group stats */
+
+// Ranked list of groups. `defined` is the Groups tab list (gives heads and lets empty groups appear).
+// Group score = average student score per member x participation rate (members with 1+ badge / members).
+// Order: group score, then average experience points per member, then members with 1+ badge (all high to low).
+function groupStats_(members, defined, cfg) {
+  const g = {};
+  const add = (key, head) => {
+    if (!g[key]) g[key] = { group: key, head: head || '', list: [] };
+    else if (head && !g[key].head) g[key].head = head;
+    return g[key];
+  };
+  (defined || []).forEach(d => add(d.group, d.head));
+  members.forEach(m => add(m.group, '').list.push(m));
+
+  const r6 = x => Math.round(x * 1e6);
+  const stats = Object.keys(g).map(k => {
+    const x = g[k], n = x.list.length;
+    const scoreSum = x.list.reduce((s, m) => s + (m.score || 0), 0);
+    const badges = x.list.reduce((s, m) => s + m.counted, 0);
+    const pts = x.list.reduce((s, m) => s + m.points, 0);
+    const active = x.list.filter(m => m.counted > 0).length;
+    const avgScore = n ? scoreSum / n : 0;
+    const part = n ? active / n : 0;
+    return {
+      group: k, head: x.head, members: n,
+      verified: x.list.filter(m => m.status === 'OK').length,
+      active: active, part: part, avgScore: avgScore, gscore: Math.round(avgScore * 10) / 10,
+      total: badges, avg: n ? badges / n : 0, avgPoints: n ? pts / n : 0,
+      bottle: x.list.filter(m => m.counted >= cfg.bottle).length,
+      kit: x.list.filter(m => m.counted >= cfg.kit).length
+    };
+  }).sort((a, b) => (b.members > 0) - (a.members > 0) ||
+    r6(b.gscore) - r6(a.gscore) || groupCompare_(a.group, b.group));
+
+  let rank = 0, prev = null;
+  stats.forEach((s, i) => {
+    if (s.members === 0) { s.rank = '-'; return; }
+    if (!prev || r6(prev.gscore) !== r6(s.gscore)) rank = i + 1;
+    prev = s;
+    s.rank = rank;
+  });
+  return stats;
+}
+
+/* --------------------------------------------------------------- reports */
+
+function buildGroups_(model, cfg) {
+  const defined = readGroupsList_();
+  const members = groupMembers_(model);
+  const stats = groupStats_(members, defined, cfg);
+  const errors = [];
+  [
+    ['Group Leaderboard', () => buildGroupLeaderboard_(stats)],
+    ['Group Members', () => buildGroupMembers_(members, defined)],
+    ['Dashboard groups', () => buildDashboardGroups_(stats, cfg)]
+  ].forEach(step => {
+    try { step[1](); } catch (e) { errors.push(step[0] + ': ' + String(e && e.message ? e.message : e).slice(0, 120)); }
+  });
+  if (errors.length) throw new Error(errors.join(' | '));
+}
+
+function styleTitle_(sh, lastCol) {
+  if (String(sh.getRange('A1').getBackground()).toLowerCase() !== STYLE.navy) {
+    sh.getRange('A1:' + lastCol + '1').setBackground(STYLE.navy).setFontColor(STYLE.white).setFontWeight('bold').setFontSize(14);
+    sh.getRange('A2').setFontColor(STYLE.textGray);
+    setRowHeightIfNeeded_(sh, 1, 28);
+  }
+}
+
+function buildGroupLeaderboard_(stats) {
+  const ss = SpreadsheetApp.getActive();
+  const sh = ss.getSheetByName(SHEETS.GBOARD) || ss.insertSheet(SHEETS.GBOARD);
+  setValuesIfChanged_(sh.getRange('A1'), [['Group Leaderboard - which group is ahead']]);
+  setValuesIfChanged_(sh.getRange('A2'), [[
+    'Group score = average student score across the assigned eligible roster, including zero scores. Participation is shown separately. ' +
+    'Equal group scores share a rank. Members are the students you assigned to the group in Follow-up; ' +
+    'an unverified profile counts as a member with a score of 0 (plus any activity points). Groups with no members are listed last.']]);
+  const header = ['Rank', 'Group', 'Group head', 'Members', 'Verified members', 'Members with 1+ badge', 'Participation',
+    'Avg score per member', 'Group score', 'Avg badges per member', 'Avg experience points', 'At bottle tier+', 'At kit tier'];
+  const rows = stats.length ? stats.map(s => [s.rank, s.group, s.head, s.members, s.verified, s.active,
+    Math.round(s.part * 1000) / 1000, Math.round(s.avgScore * 10) / 10, Math.round(s.gscore * 10) / 10,
+    Math.round(s.avg * 100) / 100, Math.round(s.avgPoints), s.bottle, s.kit])
+    : [['', 'No groups yet - add them in the Groups tab', '', '', '', '', '', '', '', '', '', '', '']];
+  const sync = syncTable_(sh, 4, 1, header, rows);
+  styleHeaderRange_(sh.getRange(4, 1, 1, header.length));
+  if (sync.changed && stats.length) {
+    const n = stats.length;
+    sh.getRange(5, 1, n, header.length).setBackground(STYLE.white).setVerticalAlignment('middle');
+    safeFormat_(sh.getRange(5, 7, n, 1), '0%');
+    safeFormat_(sh.getRange(5, 8, n, 2), '0.0');
+    safeFormat_(sh.getRange(5, 10, n, 1), '0.00');
+    const medal = ['#fff2cc', '#eeeeee', '#fce5cd'];
+    stats.forEach((s, i) => { if (s.rank >= 1 && s.rank <= 3) sh.getRange(5 + i, 1, 1, header.length).setBackground(medal[s.rank - 1]); });
+  }
+  if (sh.getFrozenRows() !== 4) sh.setFrozenRows(4);
+  styleTitle_(sh, 'M');
+  [60, 110, 200, 90, 110, 130, 110, 140, 110, 140, 140, 110, 100].forEach((w, i) => setColumnWidthIfNeeded_(sh, i + 1, w));
+}
+
+// Group Members: B3 is a drop-down you choose (kept between refreshes). The table is plain formulas that look the
+// chosen group up in a hidden helper block (columns K:S) which the script rewrites on every refresh.
+const GM_HELP_COL = 11;          // column K
+const GM_LAST = 2000;
+function buildGroupMembers_(members, defined) {
+  const ss = SpreadsheetApp.getActive();
+  const sh = ss.getSheetByName(SHEETS.GMEM) || ss.insertSheet(SHEETS.GMEM);
+  setValuesIfChanged_(sh.getRange('A1'), [['Group Members - pick a group number']]);
+  setValuesIfChanged_(sh.getRange('A2'), [[
+    'Choose the group in the yellow cell. Members are listed best first (score, then badges, experience points, streak). Columns K to T are the data behind this table; leave them alone.']]);
+  setValuesIfChanged_(sh.getRange('A3'), [['Group:']]);
+  if (!sh.getRange('B3').getDataValidation()) {
+    const rule = groupDropdownRule_();
+    if (rule) safeValidation_(sh.getRange('B3'), rule);
+  }
+  setValuesIfChanged_(sh.getRange('C3'), [['Group head:']]);
+  setFormulasIfChanged_(sh.getRange('D3'), [['=IF($B$3="","",IFERROR(VLOOKUP($B$3,' + SHEETS.GROUPS + '!$A$' + GROUP_FIRST_ROW + ':$B$' + GROUP_LAST_ROW + ',2,FALSE),""))']]);
+  setValuesIfChanged_(sh.getRange('E3'), [['Members:']]);
+  setFormulasIfChanged_(sh.getRange('F3'), [['=IF($B$3="","",SUMPRODUCT(--($K$6:$K$' + GM_LAST + '&""=$B$3&"")))']]);
+  setRangeBackgroundIfNeeded_(sh.getRange('B3'), '#fff2cc');
+  sh.getRange('A3:F3').setFontWeight('bold');
+
+  // Helper block: one row per member, sorted by group then rank, with a "group|position" key.
+  const byGroup = {};
+  members.forEach(m => { (byGroup[m.group] = byGroup[m.group] || []).push(m); });
+  const helper = [];
+  let biggest = 0;
+  Object.keys(byGroup).sort(groupCompare_).forEach(g => {
+    const list = sortMembers_(byGroup[g]);
+    biggest = Math.max(biggest, list.length);
+    list.forEach((m, i) => {
+      const parts = m.latest ? m.latest.split('-') : null;     // ISO day -> dd/mm/yyyy text
+      helper.push([g, g + '|' + (i + 1), m.name, m.roll, m.status, m.score, m.counted, m.points, m.streak,
+        parts ? parts[2] + '/' + parts[1] + '/' + parts[0] : '']);
+    });
+  });
+  const hHeader = ['Group', 'Key', 'Name', 'Roll', 'Profile status', 'Score', 'Curriculum badges', 'Experience points', 'Longest streak (days)', 'Latest badge date'];
+  // Text format first, so Sheets cannot turn "1|2" or "14/09/2026" into other types.
+  const hRows = Math.max(1, helper.length);
+  ensureGridSize_(sh, Math.max(GM_LAST, 5 + hRows), GM_HELP_COL + hHeader.length);
+  setNumberFormatIfNeeded_(sh.getRange(6, GM_HELP_COL + 1, hRows, 1), '@');
+  setNumberFormatIfNeeded_(sh.getRange(6, GM_HELP_COL + 9, hRows, 1), '@');
+  syncTable_(sh, 5, GM_HELP_COL, hHeader, helper);
+  styleHeaderRange_(sh.getRange(5, GM_HELP_COL, 1, hHeader.length));
+
+  // Visible table: row k shows member k of the chosen group.
+  const visibleRows = Math.max(30, biggest + 5);
+  const col = n => '$' + colLetter_(GM_HELP_COL + n);
+  // text=true appends &"" so an empty helper cell shows blank instead of 0 (used for the date column).
+  const pick = (n, r, text) => '=IF($A' + r + '="","",INDEX(' + col(n) + '$6:' + col(n) + '$' + GM_LAST +
+    ',MATCH($B$3&"|"&$A' + r + ',' + col(1) + '$6:' + col(1) + '$' + GM_LAST + ',0))' + (text ? '&""' : '') + ')';
+  const formulas = [];
+  for (let k = 1; k <= visibleRows; k++) {
+    const r = 5 + k;
+    formulas.push(['=IF($B$3="","",IF(' + k + '<=$F$3,' + k + ',""))', pick(2, r), pick(3, r), pick(4, r), pick(5, r), pick(6, r), pick(7, r), pick(8, r), pick(9, r, true)]);
+  }
+  setValuesIfChanged_(sh.getRange('A5:I5'), [['#', 'Name', 'Roll', 'Profile status', 'Score', 'Curriculum badges', 'Experience points', 'Longest streak (days)', 'Latest badge date']]);
+  styleHeaderRange_(sh.getRange('A5:I5'));
+  setFormulasIfChanged_(sh.getRange(6, 1, visibleRows, 9), formulas);
+  safeFormat_(sh.getRange(6, 5, visibleRows, 1), '0.0');
+  const below = Math.min(200, sh.getMaxRows() - (5 + visibleRows));
+  if (below > 0) sh.getRange(6 + visibleRows, 1, below, 9).clearContent();
+
+  if (!sh.isColumnHiddenByUser(GM_HELP_COL)) sh.hideColumns(GM_HELP_COL, hHeader.length);
+  if (sh.getFrozenRows() !== 5) sh.setFrozenRows(5);
+  styleTitle_(sh, 'I');
+  [50, 200, 120, 190, 80, 120, 120, 130, 120].forEach((w, i) => setColumnWidthIfNeeded_(sh, i + 1, w));
+}
+
+// Dashboard: group, members, head, group score - best group first, under the badge table (columns A:D).
+function buildDashboardGroups_(stats, cfg) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(SHEETS.DASH);
+  if (!sh) return;
+  const start = Math.max(38, 25 + (cfg.curriculum || []).length + 3);
+  setValuesIfChanged_(sh.getRange(start, 1), [['Groups and their heads (best group first)']]);
+  sh.getRange(start, 1).setFontWeight('bold');
+  setValuesIfChanged_(sh.getRange(start + 1, 1, 1, 4), [['Group', 'Members', 'Group head', 'Group score']]);
+  styleHeaderRange_(sh.getRange(start + 1, 1, 1, 4));
+  const rows = stats.length ? stats.map(s => [s.group, s.members, s.head, Math.round(s.gscore * 10) / 10])
+    : [['No groups yet', '', 'Add them in the Groups tab', '']];
+  const first = start + 2;
+  setValuesIfChanged_(sh.getRange(first, 1, rows.length, 4), rows);
+  safeFormat_(sh.getRange(first, 4, rows.length, 1), '0.0');
+  sh.getRange(first, 1, rows.length, 1).setHorizontalAlignment('left');
+  const below = Math.min(60, sh.getMaxRows() - (first + rows.length) + 1);
+  if (below > 0) sh.getRange(first + rows.length, 1, below, 4).clearContent();
+}
+/**
+ * V5 event rules adopted 28 Oct 2026.
+ * Score = curriculum badge points + best curriculum streak + early completion + attendance.
+ * V9: total experience points count, 1 score point per 100, capped at 30. Streak capped at 7. Attendance is 10 per unique dated session, no cap.
+ * Failed profile updates retain cached verified evidence. Form Responses 1 is never modified.
+ */
+
+const SCORING_RULES = [
+  ['Program end date', new Date(Date.UTC(2026, 10, 22)), 'Early-finish points fall evenly to 0 on this date.'],
+  ['Minimum points for a badge', 4, 'A badge worth fewer credits (for example 0) still scores at least this.'],
+  ['Points per badge credit', 1, 'Badge points = credits x this number (but never below the minimum).'],
+  ['Experience points per 1 score point', 100, 'Total experience points on the profile divided by this (absolute points, any account age).'],
+  ['Experience score cap', 30, 'Most score points experience can give.'],
+  ['Old account with no starting value: % of lifetime points counted', 0, 'Unused (V9): total experience points count for every account.'],
+  ['Points per day of badge streak', 1, 'Longest run of days in a row with a badge.'],
+  ['Streak score cap', 7, 'Most score points the streak can give.'],
+  ['Early-finish bonus (maximum)', 15, 'Only for finishing all curriculum badges; shrinks the later they finish.']
+];
+// Dummy activities: replace the names and points with your own (F13:G17; you can add more rows below, up to row 40).
+const DEFAULT_ACTIVITIES = []; // Add real attendance sessions only, each worth 10 points.
+const ACT_FIRST_ROW = 5;
+const ACT_LAST_ROW = 1000;
+
+function ensureScoringConfig_(sh) {
+  if (String(sh.getRange('F1').getValue()).trim() !== 'Scoring rule') {
+    const existing = sh.getRange('F1:H17').getValues();
+    if (existing.some(r => r.some(v => v !== '' && v !== null))) return;   // something else is there: never overwrite
+    sh.getRange('F1:H1').setValues([['Scoring rule', 'Value', 'Note']]);
+    sh.getRange(2, 6, SCORING_RULES.length, 3).setValues(SCORING_RULES);
+    sh.getRange('F12:H12').setValues([['Activity', 'Points', 'Note']]);
+    if (DEFAULT_ACTIVITIES.length) sh.getRange(13, 6, DEFAULT_ACTIVITIES.length, 3).setValues(DEFAULT_ACTIVITIES);
+  }
+  styleHeaderRange_(sh.getRange('F1:H1'));
+  styleHeaderRange_(sh.getRange('F12:H12'));
+  setRangeBackgroundIfNeeded_(sh.getRange('G2:G10'), STYLE.lightBlue);
+  setRangeBackgroundIfNeeded_(sh.getRange('F13:G40'), STYLE.lightBlue);
+  // The existing typed Config column owns its date format; do not reformat G2.
+  setColumnWidthIfNeeded_(sh, 6, 400);
+  setColumnWidthIfNeeded_(sh, 7, 110);
+  setColumnWidthIfNeeded_(sh, 8, 430);
+}
+
+function readScoring_(sh) {
+  const num = (v, d) => { const n = parseFloat(v); return isNaN(n) ? d : n; };
+  const r = sh.getRange('G2:G10').getValues().map(x => x[0]);
+  const endOk = r[0] instanceof Date && !isNaN(r[0].getTime());
+  const acts = sh.getRange('F13:G40').getValues()
+    .filter(x => String(x[0] === null || x[0] === undefined ? '' : x[0]).trim())
+    .map(x => ({ name: String(x[0]).trim(), points: num(x[1], 0) }));
+  return {
+    end: endOk ? toUtcDay_(r[0]) : new Date(Date.UTC(2026, 10, 22)),
+    badgeMin: num(r[1], 4),
+    perCredit: num(r[2], 1),
+    expPer: Math.max(0.0001, num(r[3], 30)),
+    expCap: num(r[4], 30),
+    oldPct: Math.min(100, Math.max(0, num(r[5], 50))),
+    streakPer: num(r[6], 1),
+    streakCap: num(r[7], 7),
+    earlyMax: num(r[8], 15),
+    activities: acts
+  };
+}
+
+/* --------------------------------------------------------- Activity Points */
+
+function ensureActivitySheet_() {
+  const ss = SpreadsheetApp.getActive();
+  const sh = ss.getSheetByName(SHEETS.ACTIVITY) || ss.insertSheet(SHEETS.ACTIVITY);
+  setValuesIfChanged_(sh.getRange('A1'), [['Activity Points - one row per award']]);
+  setValuesIfChanged_(sh.getRange('A2'), [[
+    'Type the roll number (column A) and pick the activity (column B) from row 5 down. Points come from the activity\'s value in Config unless you type a number in column C. ' +
+    'Columns F to H are filled in by the script. The same activity is counted once per student.']]);
+  setValuesIfChanged_(sh.getRange('A4:H4'), [['Roll', 'Activity', 'Points (blank = Config value)', 'Session date (required)', 'Note (optional)', 'Student (auto)', 'Check (auto)', 'Points counted (auto)']]);
+  styleHeaderRange_(sh.getRange('A4:H4'));
+  if (String(sh.getRange('A1').getBackground()).toLowerCase() !== STYLE.navy) {
+    sh.getRange('A1:H1').setBackground(STYLE.navy).setFontColor(STYLE.white).setFontWeight('bold').setFontSize(14);
+    sh.getRange('A2').setFontColor(STYLE.textGray);
+  }
+  if (!sh.getRange(ACT_FIRST_ROW, 2).getDataValidation()) {
+    const conf = ss.getSheetByName(SHEETS.CONF);
+    if (conf) {
+      const rule = SpreadsheetApp.newDataValidation().requireValueInRange(conf.getRange('F13:F40'), true).setAllowInvalid(false).build();
+      safeValidation_(sh.getRange(ACT_FIRST_ROW, 2, ACT_LAST_ROW - ACT_FIRST_ROW + 1, 1), rule);
+    }
+    safeFormat_(sh.getRange(ACT_FIRST_ROW, 4, ACT_LAST_ROW - ACT_FIRST_ROW + 1, 1), 'dd/mm/yyyy');
+    sh.getRange(ACT_FIRST_ROW, 6, ACT_LAST_ROW - ACT_FIRST_ROW + 1, 3).setBackground(STYLE.lightGray);
+  }
+  if (sh.getFrozenRows() !== 4) sh.setFrozenRows(4);
+  [120, 270, 150, 110, 220, 190, 330, 120].forEach((w, i) => setColumnWidthIfNeeded_(sh, i + 1, w));
+  return sh;
+}
+
+// One row per person: the latest submission by the same roll number and name (the Follow-up rule).
+// Superseded rows are left out. Hidden students are kept: they can still be awarded points.
+function latestPersonRows_(model) {
+  const personKey = m => m.roll + '|' + nameSetKey_(m.name);
+  const latest = {};
+  model.forEach((m, i) => {
+    if (m.status === DUP || !rollLooksValid_(m.roll)) return;
+    const t = responseTime_(m.ts), k = personKey(m), best = latest[k];
+    if (!best || t > best.time || (t === best.time && i > best.index)) latest[k] = { time: t, index: i };
+  });
+  return model.filter((m, i) => {
+    if (m.status === DUP || m.status === EXCLUDED) return false;
+    return !(rollLooksValid_(m.roll) && latest[personKey(m)] && latest[personKey(m)].index !== i);
+  });
+}
+
+function applyActivityPoints_(model, cfg) {
+  model.forEach(m => { m.activityPts = 0; });
+  const sh = SpreadsheetApp.getActive().getSheetByName(SHEETS.ACTIVITY);
+  if (!sh || sh.getLastRow() < ACT_FIRST_ROW) return;
+  const people = {};
+  latestPersonRows_(model).forEach(m => { (people[m.roll] = people[m.roll] || []).push(m); });
+  const defaults = {};
+  (cfg.score.activities || []).forEach(a => { defaults[normText_(a.name)] = a.points; });
+  const n = sh.getLastRow() - ACT_FIRST_ROW + 1;
+  const rows = sh.getRange(ACT_FIRST_ROW, 1, n, 5).getValues();
+  const seen = {};
+  const report = rows.map((r, i) => {
+    const roll = normRoll_(r[0]);
+    const act = String(r[1] === null || r[1] === undefined ? '' : r[1]).trim();
+    const typed = r[2] === '' || r[2] === null || r[2] === undefined ? null : parseFloat(r[2]);
+    if (!roll && !act && typed === null) return ['', '', ''];
+    const found = people[roll] || [];
+    if (!roll) return ['', 'Roll number missing', 0];
+    if (!found.length) return ['', 'Roll number not found', 0];
+    if (found.length > 1) return ['', 'Roll shared by ' + found.length + ' students - not applied', 0];
+    const m = found[0];
+    if (!act || defaults[normText_(act)] !== 10) return [m.name, 'Choose a configured attendance session worth 10 points', 0];
+    if (typed !== null && (!isFinite(typed) || typed !== 10)) return [m.name, 'Attendance is fixed at 10 points per session', 0];
+    if (!(r[3] instanceof Date) || isNaN(r[3].getTime())) return [m.name, 'Enter the actual session date', 0];
+    const date = toUtcDay_(r[3]);
+    if (date < cfg.start || date > cfg.score.end) return [m.name, 'Session is outside the event window', 0];
+    const pts = 10;
+    const dupKey = roll + '|' + normText_(act);
+    if (act && seen[dupKey] !== undefined) return [m.name, 'Same activity already given in row ' + seen[dupKey] + ' - not counted again', 0];
+    if (act) seen[dupKey] = ACT_FIRST_ROW + i;
+    m.activityPts += pts;
+    return [m.name, 'OK', pts];
+  });
+  setValuesIfChanged_(sh.getRange(ACT_FIRST_ROW, 6, n, 3), report);
+}
+
+/* ----------------------------------------------------------------- scoring */
+
+function hasScoringEvidence_(m) {
+  return m.status === 'OK' || (String(m.status).indexOf('Unreachable') === 0 && m.since !== '' && m.since !== undefined && m.checked);
+}
+
+function round1_(x) { return Math.round(x * 10) / 10; }
+function isoToUtc_(s) {
+  const p = String(s || '').split('-');
+  return p.length === 3 ? new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])) : new Date(NaN);
+}
+
+function scoreModelBase_(model, cfg) {
+  const rules = cfg.score;
+  const total = cfg.curriculum.length;
+  const startMs = cfg.start.getTime();
+  const spanMs = Math.max(86400000, rules.end.getTime() - startMs);
+  model.forEach(m => {
+    m.badgePts = 0; m.expPts = 0; m.streakPts = 0; m.earlyPts = 0;
+  });
+  applyActivityPoints_(model, cfg);
+  model.forEach(m => {
+    const ok = hasScoringEvidence_(m);
+    if (ok) {
+      // badge points
+      let ticks = 0, pts = 0, last = '';
+      (m.cells || []).forEach((c, k) => {
+        if (String(c).indexOf('✓') !== 0) return;
+        const earned = isoToUtc_(String(c).slice(2).trim());
+        if (isNaN(earned.getTime()) || earned < cfg.start || earned > rules.end) return;
+        ticks++;
+        const credits = parseFloat(cfg.curriculum[k] && cfg.curriculum[k].credits) || 0;
+        pts += Math.max(rules.badgeMin, credits * rules.perCredit);
+        const d = String(c).slice(2).trim();
+        if (d > last) last = d;
+      });
+      pts += Math.max(0, (+m.counted || 0) - ticks) * rules.badgeMin;     // extra badges when "count only curriculum" is off
+      m.badgePts = pts;
+
+      // V9 experience points: the profile's total (absolute) experience points, 1 score point per N points
+      // (Config G5, default 30), up to the cap (Config G6, default 30). No starting value, any account age. Nothing is stored.
+      m.expPts = Math.min(rules.expCap, (+m.points || 0) / rules.expPer);
+
+      // Recompute from cached eligible curriculum dates, never non-curriculum activity.
+      const days = Array.from(new Set((m.cells || []).filter(c => String(c).indexOf('✓') === 0)
+        .map(c => isoToUtc_(String(c).slice(2).trim()).getTime())
+        .filter(t => isFinite(t) && t >= startMs && t <= rules.end.getTime()))).sort((a,b) => a-b);
+      let best = 0, run = 0, prev = null;
+      days.forEach(t => { run = prev !== null && t-prev === 86400000 ? run+1 : 1; best = Math.max(best,run); prev=t; });
+      m.streak = best;
+      m.streakPts = Math.min(rules.streakCap, best * rules.streakPer);
+      m.counted = ticks;
+      m.tier = tierLabel_(ticks, cfg);
+
+      // early finish: only when every curriculum badge is done
+      if (total > 0 && ticks >= total && last) {
+        const frac = Math.min(1, Math.max(0, (rules.end.getTime() - isoToUtc_(last).getTime()) / spanMs));
+        m.earlyPts = rules.earlyMax * frac;
+      }
+    }
+    m.activityPts = m.activityPts || 0;
+    m.score = round1_(m.badgePts + m.expPts + m.streakPts + m.earlyPts + m.activityPts);
+    m.badgePts = round1_(m.badgePts); m.expPts = round1_(m.expPts); m.streakPts = round1_(m.streakPts);
+    m.earlyPts = round1_(m.earlyPts); m.activityPts = round1_(m.activityPts);
+  });
+}
 function orderOrganizerTabsV5() {
  const ss=SpreadsheetApp.getActive();
  const current=ss.getActiveSheet();
- const order=['Dashboard','Leaderboard','Group Leaderboard','Groups','Group Members','Follow-up','Form Responses 1','Activity Points','Reward Eligibility','Tracker','Config','Refresh Log','Refill Check'];
+ const order=['Dashboard','Leaderboard','Group Leaderboard','Groups','Group Members','Follow-up','Form Responses 1','Activity Points','Reward Eligibility','Tracker','Config','Refresh Log','Refill Check','Bingo Approvals','Bingo Progress'];
  let position=1;
  order.forEach(name=>{const sh=ss.getSheetByName(name);if(sh){ss.setActiveSheet(sh);ss.moveActiveSheet(position++);}});
  if(current)ss.setActiveSheet(current);
+}
+
+/** V6 community approvals and nine-square Bingo. Private organizer inputs never belong in public JSON. */
+const BINGO_APPROVALS='Bingo Approvals';
+function ensureBingoApprovals_(){
+ const ss=SpreadsheetApp.getActive();const sh=ss.getSheetByName(BINGO_APPROVALS)||ss.insertSheet(BINGO_APPROVALS);
+ setValuesIfChanged_(sh.getRange('A1:H1'),[['Roll','Task ID','Status','Completion date','Private organizer note','Student (auto)','Check (auto)','Community points (auto)']]);
+ sh.setFrozenRows(1);sh.getRange('A2:E1001').setBackground(STYLE.lightBlue);
+ safeValidation_(sh.getRange('B2:B1001'),SpreadsheetApp.newDataValidation().requireValueInList(['credits','story','community'],true).setAllowInvalid(false).build());
+ safeValidation_(sh.getRange('C2:C1001'),SpreadsheetApp.newDataValidation().requireValueInList(['Pending','Approved','Rejected'],true).setAllowInvalid(false).build());
+ return sh;
+}
+function scoreModel_(model,cfg){
+ scoreModelBase_(model,cfg);
+ const ss=SpreadsheetApp.getActive();const sh=ss.getSheetByName(BINGO_APPROVALS);const approved={},people={};
+ latestPersonRows_(model).forEach(m=>{(people[m.roll]=people[m.roll]||[]).push(m);});
+ const seen=new Set();
+ if(sh&&sh.getLastRow()>1){const rows=sh.getRange(2,1,sh.getLastRow()-1,5).getValues();const report=rows.map(r=>{
+  if(!r.some(v=>v!==''&&v!==null))return['','',''];const roll=normRoll_(r[0]),task=String(r[1]||'').trim(),status=String(r[2]||'').trim();const found=people[roll]||[];
+  if(found.length!==1)return['','Roll missing, unknown or ambiguous',0];const m=found[0];if(!['credits','story','community'].includes(task))return[m.name,'Choose a task ID',0];
+  if(status!=='Approved')return[m.name,status==='Rejected'?'Rejected':'Pending approval',0];
+  if(!(r[3] instanceof Date)||isNaN(r[3].getTime()))return[m.name,'Completion date required',0];const date=toUtcDay_(r[3]);if(date<cfg.start||date>cfg.score.end)return[m.name,'Outside event window',0];
+  const key=roll+'|'+task;if(seen.has(key))return[m.name,'Duplicate approval; not awarded twice',0];seen.add(key);(approved[roll]=approved[roll]||new Set()).add(task);return[m.name,'Approved',task==='credits'?0:20];
+ });setValuesIfChanged_(sh.getRange(2,6,report.length,3),report);}
+ const sessions={};const act=ss.getSheetByName(SHEETS.ACTIVITY);if(act&&act.getLastRow()>=5){act.getRange(5,1,act.getLastRow()-4,8).getValues().forEach(r=>{
+  if(!['OK','Attendance cap of 10 reached'].includes(String(r[6])))return;const roll=normRoll_(r[0]);(sessions[roll]=sessions[roll]||new Set()).add(String(r[1]||'').trim());
+ });}
+ const progress=[];
+ latestPersonRows_(model).forEach(m=>{
+  if(!hasScoringEvidence_(m))return;const a=approved[m.roll]||new Set(),att=sessions[m.roll]||new Set();
+  const credit=a.has('credits')||m.manual[M.FOLLOW_STATUS]===REDEEMED;
+  const ai=cfg.curriculum.findIndex(b=>String(b.url).indexOf('/1426')>=0);const aiDone=ai>=0&&String(m.cells[ai]||'').indexOf('✓')===0;
+  const states=[m.counted>=1,credit,aiDone,att.has('kickoff-2026-10-25'),m.counted>=5,a.has('story'),Array.from(att).some(id=>id!=='kickoff-2026-10-25'),a.has('community'),m.counted>=10];
+  const count=states.filter(Boolean).length;m.bingoCount=count;m.attendancePts=m.activityPts;m.communityPts=(a.has('story')?20:0)+(a.has('community')?20:0);m.bingoBonus=count===9?5:0;
+  m.activityPts=round1_(m.activityPts+m.communityPts+m.bingoBonus);m.score=round1_(m.score+m.communityPts+m.bingoBonus);
+  progress.push([m.name,m.roll,count,...states.map(x=>x?'Complete':'Not verified'),m.attendancePts,m.communityPts,m.bingoBonus,m.score]);
+ });
+ const out=ss.getSheetByName('Bingo Progress')||ss.insertSheet('Bingo Progress');
+ syncTable_(out,1,1,['Name','Roll','Squares complete','First badge','Credits redeemed','AI Studio','25 October session','Five badges','Story card','Another session','GDG membership','Ten badges','Attendance points','Community points','Bingo bonus','Total score'],progress);
+ out.setFrozenRows(1);
+}
+function enableBingoV6(){
+ backupOrganizerData();ensureBingoApprovals_();const conf=SpreadsheetApp.getActive().getSheetByName(SHEETS.CONF);
+ const entries=conf.getRange('F13:H40').getValues();if(!entries.some(r=>r[0]==='kickoff-2026-10-25')){const free=entries.findIndex(r=>!r[0]);if(free<0)throw new Error('No free session configuration row');conf.getRange(13+free,6,1,3).setValues([['kickoff-2026-10-25',2,'Credential redemption session,25 October2026']]);}
+ runRefresh_(false);
+}
+
+/** V9: experience points score 1 per 100 of the profile's total points, capped at 30 (streak cap 7). Run once from the editor in a sheet that already ran applyEventRulesV5; it then refreshes. */
+function enableExperiencePointsV9() {
+  const conf = SpreadsheetApp.getActive().getSheetByName(SHEETS.CONF);
+  if (!conf) throw new Error('Config missing');
+  if (String(conf.getRange('F1').getValue()).trim() !== 'Scoring rule') throw new Error('Scoring rules block not found in Config F1');
+  conf.getRange('G5:G7').setValues([[100], [30], [0]]);
+  conf.getRange('G8:G9').setValues([[1], [7]]);
+  conf.getRange('H5:H7').setValues([['Total experience points on the profile divided by this (absolute points, any account age).'], ['Most score points experience can give.'], ['Unused: total experience points count for every account.']]);
+  conf.getRange('H8:H9').setValues([['Longest run of days in a row with a badge.'], ['Most score points the streak can give.']]);
+  runRefresh_(false);
 }
